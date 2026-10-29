@@ -100,7 +100,7 @@ export default function Premium() {
   return (
     <div className="page-pad pt-[calc(12px+var(--safe-t))]">
       <section className="relative isolate mx-4 mt-3 overflow-hidden rounded-[32px] p-6 md:mx-8 md:mt-6 md:p-10">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(90%_120%_at_0%_0%,#f0abfc_0%,#8b5cf6_35%,#1e1b4b_75%,#07070a_100%)]" aria-hidden />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(90%_120%_at_0%_0%,#ffffff_0%,#a1a1aa_30%,#27272a_70%,#07070a_100%)]" aria-hidden />
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={softSpring} className="text-white">
           <div className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm font-semibold">
             <Crown className="size-4" /> AURA Premium
@@ -159,14 +159,14 @@ export default function Premium() {
                   on ? 'bg-surface-hover ring-2 ring-dyn' : 'bg-surface hover:bg-surface-hover',
                 )}
               >
-                {p.badge && <span className="absolute top-4 right-4 rounded-full bg-dyn px-2.5 py-0.5 text-[11px] font-bold text-white">{p.badge}</span>}
+                {p.badge && <span className="absolute top-4 right-4 rounded-full bg-fg px-2.5 py-0.5 text-[11px] font-bold text-bg">{p.badge}</span>}
                 <div className="text-sm font-semibold text-fg-2">{p.title}</div>
                 <div className="mt-2 text-3xl font-extrabold tracking-tight">{rub(p.price)}</div>
                 <div className="mt-1 text-sm text-fg-2">
                   {p.months > 1 ? `${rub(Math.round(p.price / p.months))} в месяц` : 'в месяц'}
                   {save > 0 && <span className="ml-2 font-semibold text-emerald-400">−{save}%</span>}
                 </div>
-                <span className={cn('absolute bottom-5 right-5 grid size-6 place-items-center rounded-full border-2', on ? 'border-dyn bg-dyn text-white' : 'border-fg-3')}>
+                <span className={cn('absolute bottom-5 right-5 grid size-6 place-items-center rounded-full border-2', on ? 'border-fg bg-fg text-bg' : 'border-fg-3')}>
                   {on && <Check className="size-3.5" strokeWidth={3} />}
                 </span>
               </Pressable>

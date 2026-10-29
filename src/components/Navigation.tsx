@@ -114,8 +114,8 @@ export function Sidebar() {
             to="/library?tab=liked"
             className="flex items-center gap-3 rounded-xl p-1.5 hover:bg-surface-hover"
           >
-            <div className="grid size-10 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
-              <Heart className="size-4 fill-white text-white" />
+            <div className="grid size-10 place-items-center rounded-lg bg-gradient-to-br from-zinc-100 to-zinc-500">
+              <Heart className="size-4 fill-black text-black" />
             </div>
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">Любимые треки</div>

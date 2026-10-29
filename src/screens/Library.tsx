@@ -124,7 +124,7 @@ export default function LibraryScreen() {
         {tab === 'liked' &&
           (lib.likes.length ? (
             <>
-              <CollectionHeader kind="Коллекция" title="Любимые треки" seed="liked" tracks={liked} context={{ label: 'Любимые треки', path: '/library?tab=liked' }} artworkNode={<div className="grid aspect-square w-full place-items-center rounded-[24px] bg-gradient-to-br from-violet-500 via-fuchsia-500 to-orange-400 shadow-2xl"><Heart className="size-1/3 fill-white text-white" /></div>} />
+              <CollectionHeader kind="Коллекция" title="Любимые треки" seed="liked" tracks={liked} context={{ label: 'Любимые треки', path: '/library?tab=liked' }} artworkNode={<div className="grid aspect-square w-full place-items-center rounded-[24px] bg-gradient-to-br from-zinc-100 via-zinc-400 to-zinc-800 shadow-2xl"><Heart className="size-1/3 fill-black/80 text-black/80" /></div>} />
               <TrackList tracks={liked} context={{ label: 'Любимые треки', path: '/library?tab=liked' }} className="mt-6 px-2 md:px-6" />
             </>
           ) : (

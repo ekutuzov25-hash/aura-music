@@ -3,8 +3,8 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Link2, Search, Sparkles } from 'lucide-react';
 import { audius } from '../providers/audius';
-import { isSoundCloudUrl, soundcloudApiReady, trackFromSoundCloudUrl } from '../providers/soundcloud';
-import { player } from '../player/controller';
+import { isSoundCloudUrl, soundcloudApiReady } from '../providers/soundcloud';
+import { openSoundCloudLink } from '../providers/scLinks';
 import { useLibrary } from '../store/library';
 import { useSettings } from '../store/settings';
 import { toast } from '../store/ui';
@@ -13,7 +13,7 @@ import { useAsync } from '../lib/useAsync';
 import { useIsPremium } from '../billing/premium';
 import { useUI } from '../store/ui';
 import { greeting } from '../lib/util';
-import { CollectionCard, Shelf, ShelfSkeleton, TrackCard } from '../components/cards';
+import { ArtistCard, CollectionCard, Shelf, ShelfSkeleton, TrackCard } from '../components/cards';
 import { Artwork, Button, ErrorState, IconButton, Pressable, SectionHeader, softSpring } from '../components/ui/primitives';
 import { Onboarding } from './Onboarding';
 import { AuraHero } from '../components/AuraHero';
@@ -34,13 +34,13 @@ function TrackShelf({ title, subtitle, loader, deps, context }: { title: string;
 function PasteLink() {
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isSoundCloudUrl(url)) return toast('Вставьте ссылку вида https://soundcloud.com/артист/трек', { tone: 'error' });
+    if (!isSoundCloudUrl(url)) return toast('Вставьте ссылку SoundCloud: на трек, артиста или плейлист', { tone: 'error' });
     setBusy(true);
     try {
-      const t = await trackFromSoundCloudUrl(url);
-      void player.playTracks([t], 0, { label: 'SoundCloud' });
+      await openSoundCloudLink(url, navigate);
       setUrl('');
     } catch (err) {
       toast((err as Error).message || 'Не удалось открыть ссылку', { tone: 'error' });
@@ -49,13 +49,13 @@ function PasteLink() {
     }
   };
   return (
-    <form onSubmit={submit} className="mt-3 flex gap-2">
-      <label htmlFor="sc-link" className="sr-only">Ссылка на трек SoundCloud</label>
+    <form onSubmit={submit} className="mt-4 flex gap-2">
+      <label htmlFor="sc-link" className="sr-only">Ссылка SoundCloud</label>
       <div className="relative min-w-0 flex-1">
-        <Link2 className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-fg-3" />
-        <input id="sc-link" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" placeholder="https://soundcloud.com/…" className="h-11 w-full rounded-full bg-surface pr-4 pl-10 text-[15px] outline-none placeholder:text-fg-3 focus:ring-2 focus:ring-[#ff5500]" />
+        <Link2 className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-fg-3" />
+        <input id="sc-link" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" placeholder="soundcloud.com/артист или /sets/плейлист" className="h-11 w-full rounded-full bg-surface pr-4 pl-10 text-[15px] placeholder:text-fg-3" />
       </div>
-      <Button type="submit" disabled={busy || !url} className="bg-[#ff5500] text-white">{busy ? 'Открываем…' : 'Слушать'}</Button>
+      <Button type="submit" disabled={busy || !url}>{busy ? 'Открываем…' : 'Открыть'}</Button>
     </form>
   );
 }
@@ -71,6 +71,7 @@ export default function Home() {
   const preferences = useLibrary((s) => s.preferences);
   const [onboarding, setOnboarding] = useState(false);
   const premium = useIsPremium();
+  const scArtists = artists.filter((a) => a.item.source === 'soundcloud').map((a) => a.item);
 
   const taste = useMemo(() => buildTaste({ likes, history, playCounts, playlists, artists, preferences }), [likes.length, history.length, playlists.length, artists.length, preferences]); // eslint-disable-line react-hooks/exhaustive-deps
   const tasteKey = taste.genres.slice(0, 3).map((g) => g[0]).join() + '|' + taste.artists.slice(0, 2).map((a) => a[0]).join();
@@ -171,16 +172,20 @@ export default function Home() {
       )}
 
       {/* ── SoundCloud ── */}
-      <section className="mx-4 mt-9 rounded-[28px] bg-[linear-gradient(135deg,rgba(255,85,0,0.22),transparent_70%),var(--surface)] p-5 md:mx-8 md:p-7">
-        <div className="flex items-center gap-2 text-sm font-bold text-[#ff7a33]"><span className="size-2 rounded-full bg-[#ff5500]" /> SoundCloud</div>
-        <h2 className="mt-1.5 text-xl font-bold tracking-tight">Trending on SoundCloud</h2>
+      <section className="glass mx-4 mt-9 rounded-[28px] p-5 md:mx-8 md:p-7">
+        <div className="flex items-center gap-2 text-sm font-bold text-fg-2"><span className="size-2 rounded-full bg-[#ff5500]" /> SoundCloud</div>
+        <h2 className="mt-1.5 text-xl font-bold tracking-tight">Любой артист или плейлист SoundCloud — целиком</h2>
         <p className="mt-1 max-w-2xl text-sm text-fg-2">
-          Официальный API SoundCloud не предоставляет чарты, поэтому здесь нет выдуманного «тренда».{' '}
-          {scApi.data ? 'Ищите любые треки, сеты и ремиксы SoundCloud во вкладке «Поиск».' : 'Вставьте ссылку на любой публичный трек — он воспроизведётся через официальный плеер. Для поиска по SoundCloud добавьте ключи API (см. README).'}
+          {scApi.data
+            ? 'Ищите треки, сеты и ремиксы SoundCloud во вкладке «Поиск» или вставьте ссылку.'
+            : 'Вставьте ссылку на профиль артиста, плейлист или трек — AURA покажет все публичные треки и сыграет их полностью через официальный плеер SoundCloud. Подпишитесь на артиста, и он появится здесь.'}
         </p>
-        {scApi.data ? (
-          <Pressable onClick={() => navigate('/search?source=soundcloud')} className="mt-4 inline-flex h-11 items-center gap-2 rounded-full bg-[#ff5500] px-5 font-semibold text-white"><Search className="size-4" />Искать на SoundCloud</Pressable>
-        ) : <PasteLink />}
+        <PasteLink />
+        {scArtists.length > 0 && (
+          <div className="no-scrollbar -mx-1 mt-5 flex gap-4 overflow-x-auto px-1">
+            {scArtists.map((a, i) => <ArtistCard key={a.id} a={a} index={i} />)}
+          </div>
+        )}
       </section>
 
       <TrackShelf title="В тренде" subtitle="Audius · топ недели" loader={() => audius.trending!({ time: 'week' })} deps={[]} context={{ label: 'В тренде · Audius' }} />

@@ -106,7 +106,7 @@ export const Artwork = memo(function Artwork({
       className={cn('relative overflow-hidden bg-surface', rounded, className)}
       style={
         state !== 'ok'
-          ? { background: `linear-gradient(135deg, hsl(${hue} 55% 38%), hsl(${(hue + 50) % 360} 60% 18%))` }
+          ? { background: `linear-gradient(135deg, hsl(0 0% ${22 + (hue % 14)}%), hsl(0 0% ${8 + (hue % 6)}%))` }
           : undefined
       }
     >
@@ -138,7 +138,7 @@ export function SourceBadge({ source, preview, className }: { source: SourceId; 
         'inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full px-1.5 text-[10px] font-bold tracking-wide uppercase',
         className,
       )}
-      style={{ background: `${m.color}22`, color: m.color }}
+      style={{ background: 'var(--surface-hover)', color: 'var(--fg-2)' }}
     >
       <span className="size-1.5 rounded-full" style={{ background: m.color }} />
       {preview ? '30s' : m.short}

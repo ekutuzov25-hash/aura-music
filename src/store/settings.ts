@@ -37,7 +37,7 @@ export const useSettings = create<SettingsState>()(
       motion: 'system',
       liteGlass: false,
       haptics: true,
-      dynamicColor: true,
+      dynamicColor: false,
       visualizer: true,
       enabledSources: ['soundcloud', 'audius', 'itunes', 'local'],
       searchHistory: [],
@@ -50,6 +50,15 @@ export const useSettings = create<SettingsState>()(
       },
       setProfile: (p) => set({ profile: { ...get().profile, ...p } }),
     }),
-    { name: 'aura-settings', version: 1 },
+    {
+      name: 'aura-settings',
+      version: 2,
+      // v2: new black-and-white look — cover colours become opt-in
+      migrate: (state, version) => {
+        const s = state as { dynamicColor?: boolean };
+        if (version < 2) s.dynamicColor = false;
+        return s as never;
+      },
+    },
   ),
 );

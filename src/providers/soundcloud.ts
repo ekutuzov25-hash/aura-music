@@ -14,6 +14,10 @@
 import { getJSON, qs } from '../lib/http';
 import type { Artist, Collection, MusicProvider, Playability, SearchResults, Track } from './types';
 import { ProviderError } from './types';
+import { artistFromUrl, collectionFromUrl, listFromWidget, normalizeScUrl } from './scWidget';
+
+const isUrlId = (id: string) => id.startsWith('url:');
+const urlOf = (id: string) => id.slice(4);
 
 interface SCUser {
   id: number; urn?: string; username: string; full_name?: string; avatar_url?: string; description?: string;
@@ -106,7 +110,7 @@ export const isSoundCloudUrl = (s: string) => /^https?:\/\/(on\.|m\.|www\.)?soun
 
 /** Link mode: build a track card from a public URL via oEmbed (no key needed). */
 export async function trackFromSoundCloudUrl(url: string): Promise<Track> {
-  url = url.trim().replace(/^http:/, 'https:');
+  url = normalizeScUrl(url);
   if (await soundcloudApiReady()) {
     const r = await sc<SCTrack & { kind?: string }>('resolve', { url });
     if (r.kind && r.kind !== 'track') throw new ProviderError('Ссылка ведёт не на трек — откройте её как плейлист', 'not-found');
@@ -124,6 +128,7 @@ export async function trackFromSoundCloudUrl(url: string): Promise<Track> {
     sourceId: `url:${url}`,
     title,
     artist: o.author_name,
+    artistId: o.author_url ? `soundcloud:url:${normalizeScUrl(o.author_url)}` : undefined,
     artwork: o.thumbnail_url,
     artworkLarge: big(o.thumbnail_url),
     duration: 0, // learned from the widget once it loads
@@ -141,7 +146,7 @@ export const soundcloud: MusicProvider = {
       ? { ready: true }
       : {
           ready: false,
-          message: 'Поиск SoundCloud требует ключей API на сервере. Пока можно вставить ссылку на трек SoundCloud — он воспроизведётся через официальный плеер.',
+          message: 'Поиск по названию требует платных ключей API (Artist Pro). Без ключей работают ссылки на артистов, плейлисты и треки — всё играет целиком через официальный плеер.',
         };
   },
   async search(query, signal): Promise<SearchResults> {
@@ -173,23 +178,33 @@ export const soundcloud: MusicProvider = {
       throw e;
     }
   },
+  // `url:` ids come from links pasted by the user and work without API keys
+  // through the official widget (see scWidget.ts).
   async getArtist(id) {
+    if (isUrlId(id)) return artistFromUrl(urlOf(id));
     return mapArtist(await sc<SCUser>(`users/${enc(id)}`));
   },
   async getArtistTracks(id) {
+    if (isUrlId(id)) return listFromWidget(urlOf(id));
     return items(await sc<Paged<SCTrack>>(`users/${enc(id)}/tracks`, { limit: 50 })).map(mapTrack);
   },
   async getArtistCollections(id) {
+    if (isUrlId(id)) return []; // the widget can't list a profile's playlists
     return items(await sc<Paged<SCPlaylist>>(`users/${enc(id)}/playlists`, { limit: 30 })).map(mapCollection);
   },
   async getCollection(id) {
+    if (isUrlId(id)) return collectionFromUrl(urlOf(id));
     return mapCollection(await sc<SCPlaylist>(`playlists/${enc(id)}`));
   },
   async getTrack(id) {
     return mapTrack(await sc<SCTrack>(`tracks/${enc(id)}`));
   },
   async related(track) {
-    if (track.sourceId.startsWith('url:') || !(await soundcloudApiReady())) return [];
+    // keyless: the rest of the same artist's public tracks
+    if (track.sourceId.startsWith('url:') || !(await soundcloudApiReady())) {
+      const artistUrl = track.artistId?.startsWith('soundcloud:url:') ? track.artistId.slice('soundcloud:url:'.length) : undefined;
+      return artistUrl ? (await listFromWidget(artistUrl).catch(() => [])).filter((t) => t.id !== track.id) : [];
+    }
     return items(await sc<Paged<SCTrack>>(`tracks/${enc(track.sourceId)}/related`, { limit: 20 })).map(mapTrack);
   },
 };

@@ -197,8 +197,8 @@ function PremiumCard() {
   const sub = usePremium((s) => s.subscription);
   const active = isActive(sub);
   return (
-    <Link to="/premium" className="mt-3 flex items-center gap-4 rounded-[24px] bg-[linear-gradient(120deg,rgba(168,85,247,0.35),transparent_70%),var(--surface)] p-5 hover:bg-surface-hover">
-      <Crown className="size-6 shrink-0 text-fuchsia-300" />
+    <Link to="/premium" className="mt-3 flex items-center gap-4 rounded-[24px] glass p-5 hover:bg-surface-hover">
+      <Crown className="size-6 shrink-0 text-fg" />
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">{active ? 'AURA Premium активен' : 'AURA Premium'}</span>
         <span className="block text-sm text-fg-2">

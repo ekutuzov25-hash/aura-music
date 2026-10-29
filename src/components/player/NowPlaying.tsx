@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ExternalLink, Heart, Info, ListMusic, MoreHorizontal, Radio, ThumbsDown } from 'lucide-react';
 import { dislikeCurrent, startTrackAura } from '../../recommend/aura';
+import { soundcloudSearchUrl } from '../../providers/scWidget';
 import { SOURCE_META } from '../../providers/registry';
 import { useCurrentTrack, usePlayerState } from '../../player/store';
 import { useLibrary } from '../../store/library';
@@ -197,7 +198,7 @@ export function NowPlaying() {
                       {status === 'error'
                         ? error
                         : isPreview
-                          ? 'Лицензия источника разрешает только 30-секундное превью. Полную версию слушайте у правообладателя.'
+                          ? <>Источник разрешает только 30-секундное превью.{' '}<a className="font-semibold text-fg underline" href={soundcloudSearchUrl(`${t.artist} ${t.title}`)} target="_blank" rel="noopener noreferrer">Найти полную версию на SoundCloud</a> и вставить ссылку в поиск AURA.</>
                           : 'Воспроизводится через официальный плеер SoundCloud (ниже).'}
                     </span>
                   </div>

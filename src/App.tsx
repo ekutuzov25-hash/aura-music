@@ -43,7 +43,8 @@ function useAppearance() {
   const lite = useSettings((s) => s.liteGlass);
   const dynamic = useSettings((s) => s.dynamicColor);
   const track = useCurrentTrack();
-  const [accent, setAccent] = useState<RGB>([139, 92, 246]);
+  // monochrome by default: a soft white accent unless «Цвет от обложки» is on
+  const [accent, setAccent] = useState<RGB>([236, 236, 240]);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: light)');
@@ -66,7 +67,7 @@ function useAppearance() {
   useEffect(() => {
     let cancelled = false;
     if (!dynamic || !track) {
-      setAccent([139, 92, 246]);
+      setAccent([236, 236, 240]);
       return;
     }
     extractColor(track.artwork, track.id).then((c) => !cancelled && setAccent(c));

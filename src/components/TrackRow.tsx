@@ -4,6 +4,7 @@ import {
   Disc3, ExternalLink, Heart, Link2, ListEnd, ListPlus, ListStart, MoreHorizontal, Play, Radio, Trash2, UserRound,
 } from 'lucide-react';
 import { startTrackAura } from '../recommend/aura';
+import { soundcloudSearchUrl } from '../providers/scWidget';
 import type { Track } from '../providers/types';
 import { player } from '../player/controller';
 import { usePlayerState, type PlayContext } from '../player/store';
@@ -46,6 +47,12 @@ export function useTrackMenu() {
         },
         { label: 'К исполнителю', icon: <UserRound />, onSelect: () => navigate(artistPath(t.artistId!)), hidden: !t.artistId },
         { label: 'К альбому', icon: <Disc3 />, onSelect: () => navigate(collectionPath(t.albumId!)), hidden: !t.albumId },
+        {
+          label: 'Полная версия на SoundCloud',
+          icon: <ExternalLink />,
+          hidden: t.playability !== 'preview',
+          onSelect: () => window.open(soundcloudSearchUrl(`${t.artist} ${t.title}`), '_blank', 'noopener'),
+        },
         { label: 'Открыть в источнике', icon: <ExternalLink />, onSelect: () => window.open(t.permalink, '_blank', 'noopener'), hidden: !t.permalink },
         {
           label: 'Скопировать ссылку',

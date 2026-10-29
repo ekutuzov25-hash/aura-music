@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Clock, Info, Search as SearchIcon, SearchX, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Clock, ExternalLink, Info, Search as SearchIcon, SearchX, X } from 'lucide-react';
+import { openSoundCloudLink } from '../providers/scLinks';
+import { scLinkKind, soundcloudSearchUrl } from '../providers/scWidget';
 import { audius } from '../providers/audius';
 import { searchAll, SOURCE_META, type SourceResult } from '../providers/registry';
 import { isSoundCloudUrl, trackFromSoundCloudUrl } from '../providers/soundcloud';
@@ -46,6 +48,7 @@ function RowsSkeleton() {
 
 export default function Search() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const q = params.get('q') ?? '';
   const source = (params.get('source') as SourceId | null) ?? 'all';
   const type = (params.get('type') as TypeKey | null) ?? 'all';
@@ -81,6 +84,12 @@ export default function Search() {
     setState((s) => ({ ...s, loading: true, error: undefined }));
     (async () => {
       try {
+        if (linkMode && !['track', 'short'].includes(scLinkKind(q))) {
+          // artist / playlist links open their own page with every track
+          setState({ loading: false, results: [] });
+          await openSoundCloudLink(q, navigate);
+          return;
+        }
         if (linkMode) {
           const t = await trackFromSoundCloudUrl(q);
           if (!ctrl.signal.aborted) setState({ loading: false, results: [], linkTrack: t });
@@ -101,7 +110,9 @@ export default function Search() {
   const genreBrowse = useAsync(() => (genreParam && !q ? audius.trending!({ genre: genreParam, time: 'month' }) : Promise.resolve([])), [genreParam, q]);
 
   const merged = useMemo(() => {
-    const tracks = state.results.flatMap((r) => r.results.tracks);
+    // full-length tracks first, 30-second previews after (stable order within each group)
+    const all = state.results.flatMap((r) => r.results.tracks);
+    const tracks = [...all.filter((t) => t.playability !== 'preview'), ...all.filter((t) => t.playability === 'preview')];
     const artists = state.results.flatMap((r) => r.results.artists);
     const collections = state.results.flatMap((r) => r.results.collections);
     const genres = [...new Set(tracks.map((t) => normalizeGenre(t.genre)).filter(Boolean) as string[])].slice(0, 12);
@@ -118,6 +129,7 @@ export default function Search() {
   }, [state.results, genreFilter]);
 
   const errors = state.results.filter((r) => r.error);
+  const previewShare = merged.tracks.length ? merged.tracks.filter((t) => t.playability === 'preview').length / merged.tracks.length : 0;
   const total = merged.tracks.length + merged.sets.length + merged.artists.length + merged.albums.length + merged.playlists.length;
   const suggestions = input
     ? [
@@ -130,7 +142,7 @@ export default function Search() {
 
   return (
     <div className="page-pad pt-[calc(12px+var(--safe-t))]">
-      <div className="sticky top-0 z-20 bg-gradient-to-b from-bg via-bg/95 to-bg/0 px-4 pt-3 pb-4 md:px-8 md:pt-6">
+      <div className="sticky top-0 z-20 px-4 pt-3 pb-4 md:px-8 md:pt-6">
         <h1 className="mb-3 text-3xl font-extrabold tracking-tight md:hidden">Поиск</h1>
         <div className="relative">
           <form
@@ -140,7 +152,7 @@ export default function Search() {
               update({ q: input.trim(), genre: '' });
               inputRef.current?.blur();
             }}
-            className="glass flex h-12 items-center gap-2 rounded-2xl pr-1.5 pl-4"
+            className="glass flex h-12 items-center gap-2 rounded-full pr-1.5 pl-5 transition-shadow focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.25)]"
           >
             <SearchIcon className="size-5 shrink-0 text-fg-2" />
             <label htmlFor="search-input" className="sr-only">Поиск музыки</label>
@@ -154,7 +166,7 @@ export default function Search() {
               placeholder="Треки, артисты, ремиксы, сеты или ссылка SoundCloud"
               autoComplete="off"
               enterKeyHint="search"
-              className="h-full min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-fg-3"
+              className="h-full min-w-0 flex-1 appearance-none border-0 bg-transparent text-[16px] outline-none ring-0 placeholder:text-fg-3"
             />
             {input && (
               <IconButton label="Очистить" size="sm" onClick={() => (setInput(''), update({ q: '' }), inputRef.current?.focus())}>
@@ -241,7 +253,7 @@ export default function Search() {
                     transition={{ ...softSpring, delay: Math.min(i, 18) * 0.015 }}
                     whileTap={{ scale: 0.96 }}
                     className="relative h-20 overflow-hidden rounded-2xl p-3 text-left text-[15px] font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, hsl(${h} 60% 45%), hsl(${(h + 40) % 360} 65% 28%))` }}
+                    style={{ background: `linear-gradient(135deg, hsl(0 0% ${30 + (h % 18)}% / 0.55), hsl(0 0% ${10 + (h % 8)}% / 0.35))` }}
                   >
                     {g}
                   </motion.button>
@@ -280,11 +292,22 @@ export default function Search() {
               <span>
                 <b className="text-fg">{SOURCE_META[e.source].label}:</b>{' '}
                 {e.error!.code === 'not-configured'
-                  ? 'поиск требует ключей API на сервере (см. README). Ссылки на треки SoundCloud можно вставлять прямо в поиск — они играют через официальный плеер.'
+                  ? 'поиск по названию требует платных ключей API. Вставьте сюда ссылку на артиста, плейлист или трек SoundCloud — AURA покажет и сыграет все треки целиком.'
                   : e.error!.message}
               </span>
             </div>
           ))}
+          {previewShare > 0.5 && (
+            <div className="mx-4 mb-4 rounded-[22px] bg-surface p-4 md:mx-8">
+              <div className="font-semibold">Здесь в основном 30-секундные превью</div>
+              <p className="mt-1 text-sm text-fg-2">
+                Полные версии таких треков обычно есть на SoundCloud. Найдите там артиста или плейлист, скопируйте ссылку и вставьте её в поиск — AURA покажет все его треки целиком.
+              </p>
+              <a href={soundcloudSearchUrl(q)} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-fg px-4 text-sm font-semibold text-bg">
+                Найти «{q}» на SoundCloud <ExternalLink className="size-4" />
+              </a>
+            </div>
+          )}
           {total === 0 && !errors.length && (
             <EmptyState icon={<SearchX />} title="Ничего не найдено" text={`По запросу «${q}» нет результатов${source !== 'all' ? ` в ${SOURCE_META[source].label}` : ''}. Попробуйте другое написание или другой источник.`} />
           )}

@@ -16,9 +16,9 @@ export function AuraOrb({ active, size = 220, className }: { active: boolean; si
   const reduce = useReducedMotion();
   const blobs = [
     { c: 'rgb(var(--dyn))', x: -0.18, y: -0.12, s: 0.78, d: 14 },
-    { c: 'rgb(236 72 153)', x: 0.2, y: -0.06, s: 0.62, d: 17 },
-    { c: 'rgb(56 189 248)', x: -0.04, y: 0.2, s: 0.66, d: 19 },
-    { c: 'rgb(167 139 250)', x: 0.08, y: 0.02, s: 0.5, d: 11 },
+    { c: 'rgb(255 255 255)', x: 0.2, y: -0.06, s: 0.62, d: 17 },
+    { c: 'rgb(161 161 170)', x: -0.04, y: 0.2, s: 0.66, d: 19 },
+    { c: 'rgb(228 228 231)', x: 0.08, y: 0.02, s: 0.5, d: 11 },
   ];
   return (
     <div className={cn('relative shrink-0', className)} style={{ width: size, height: size }} aria-hidden>
@@ -68,7 +68,7 @@ export function AuraHero() {
   };
 
   return (
-    <section className="relative mx-4 mt-6 overflow-hidden rounded-[32px] bg-surface md:mx-8">
+    <section className="glass relative mx-4 mt-6 overflow-hidden rounded-[32px] md:mx-8">
       <div className="flex flex-col items-center gap-2 px-5 pt-6 pb-5 md:flex-row md:gap-8 md:px-8 md:py-7">
         <Pressable onClick={toggle} hapticFeedback className="relative grid place-items-center" label={playing ? 'Пауза' : 'Включить Мою ауру'}>
           <AuraOrb active={playing} size={200} />
