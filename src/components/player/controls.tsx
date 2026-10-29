@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { player } from '../../player/controller';
+import { SOURCE_META } from '../../providers/registry';
 import { usePlayerState, useProgress } from '../../player/store';
 import { cn, formatTime } from '../../lib/util';
 import { IconButton, Pressable, spring } from '../ui/primitives';
@@ -89,7 +90,7 @@ export function PlayPauseButton({ size = 'lg', className }: { size?: 'md' | 'lg'
         e.stopPropagation();
         player.toggle();
       }}
-      className={cn('relative grid place-items-center rounded-full bg-fg text-bg shadow-lg', dims, className)}
+      className={cn('relative grid place-items-center rounded-full bg-fg text-bg', dims, className)}
     >
       <motion.span key={playing ? 'pause' : 'play'} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={spring}>
         {playing ? <Pause className={cn(icon, 'fill-current')} /> : <Play className={cn(icon, 'ml-0.5 fill-current')} />}
@@ -105,10 +106,22 @@ export function TransportControls({ big }: { big?: boolean }) {
   const shuffle = usePlayerState((s) => s.shuffle);
   const repeat = usePlayerState((s) => s.repeat);
   const hasTrack = usePlayerState((s) => s.index >= 0);
+  // Shuffle / repeat glow in the colour of the platform the current track comes from.
+  const source = usePlayerState((s) => s.queue[s.index]?.source);
+  const tint = source ? SOURCE_META[source].color : undefined;
+  const on = (active: boolean): React.CSSProperties | undefined =>
+    active && tint ? { color: tint, background: `${tint}26`, boxShadow: `0 0 18px -4px ${tint}` } : undefined;
   const ic = big ? 'size-7' : 'size-5';
   return (
     <div className={cn('flex items-center justify-between', big ? 'gap-2' : 'gap-1')}>
-      <IconButton label={shuffle ? 'Выключить перемешивание' : 'Перемешать'} active={shuffle} onClick={() => player.toggleShuffle()} size={big ? 'lg' : 'md'}>
+      <IconButton
+        label={shuffle ? 'Выключить перемешивание' : 'Перемешать'}
+        active={shuffle}
+        onClick={() => player.toggleShuffle()}
+        size={big ? 'lg' : 'md'}
+        style={on(shuffle)}
+        className="transition-[color,background-color,box-shadow] duration-300"
+      >
         <Shuffle className={big ? 'size-5' : 'size-4'} />
       </IconButton>
       <IconButton label="Предыдущий" disabled={!hasTrack} onClick={() => void player.prev()} size={big ? 'lg' : 'md'} className="text-fg">
@@ -123,6 +136,8 @@ export function TransportControls({ big }: { big?: boolean }) {
         active={repeat !== 'off'}
         onClick={() => player.cycleRepeat()}
         size={big ? 'lg' : 'md'}
+        style={on(repeat !== 'off')}
+        className="transition-[color,background-color,box-shadow] duration-300"
       >
         {repeat === 'one' ? <Repeat1 className={big ? 'size-5' : 'size-4'} /> : <Repeat className={big ? 'size-5' : 'size-4'} />}
       </IconButton>

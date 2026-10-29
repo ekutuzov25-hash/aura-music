@@ -90,9 +90,13 @@ export function PaywallSheet() {
         ))}
       </ul>
       <p className="mt-4 text-sm text-fg-2">от {PLANS[2].price / 12} ₽ в месяц · {PLANS.map((p) => `${p.title} — ${p.price} ₽`).join(' · ')}</p>
+      <p className="mt-2 text-sm text-fg-2">
+        Промокод можно купить в Telegram:{' '}
+        <a href="https://t.me/dbxxl" target="_blank" rel="noopener noreferrer" className="font-semibold text-fg underline">@dbxxl</a>
+      </p>
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" onClick={close}>Не сейчас</Button>
-        <Button onClick={() => (close(), navigate('/premium'))}><Crown className="size-4" />Выбрать тариф</Button>
+        <Button onClick={() => (close(), navigate('/premium'))}><Crown className="size-4" />Ввести промокод</Button>
       </div>
     </Sheet>
   );

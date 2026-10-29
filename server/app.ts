@@ -9,6 +9,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { handleSoundCloud, HttpError, isSoundCloudConfigured } from './soundcloud.ts';
+import { soundcloudFeed } from './scfeed.ts';
 import { billingConfig, confirmOrder, createCheckout, getSubscription, handleWebhook, userFromToken } from './billing.ts';
 
 export interface ServerOptions {
@@ -120,11 +121,16 @@ export function createAuraServer({ distDir, allowedHosts }: ServerOptions = {}) 
       if (url.pathname === '/api/health') {
         return json(res, 200, { ok: true, soundcloud: isSoundCloudConfigured() });
       }
-      if (url.pathname.startsWith('/api/sc')) {
+      if (url.pathname.startsWith('/api/sc/')) {
         if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
         const ip = req.socket.remoteAddress ?? 'unknown';
         if (rateLimited(ip)) return json(res, 429, { error: 'Too many requests' });
         return json(res, 200, await handleSoundCloud(url.pathname, url.searchParams));
+      }
+      if (url.pathname === '/api/sc-feed' && req.method === 'GET') {
+        const ip = req.socket.remoteAddress ?? 'unknown';
+        if (rateLimited(ip)) return json(res, 429, { error: 'Too many requests' });
+        return json(res, 200, await soundcloudFeed(url.searchParams.get('user') ?? ''));
       }
       if (url.pathname.startsWith('/api/billing/')) {
         const ip = req.socket.remoteAddress ?? 'unknown';

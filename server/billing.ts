@@ -76,7 +76,7 @@ interface PaymentRow {
 }
 interface SubscriptionRow {
   user_id: string;
-  plan: PlanId;
+  plan: PlanId | 'lifetime';
   status: 'active' | 'expired' | 'canceled';
   current_period_end: string;
 }
@@ -115,6 +115,8 @@ export async function createCheckout(authHeader: string | undefined, planId: str
   const plan = planById(planId);
   if (!plan) throw new HttpError(400, 'Неизвестный тариф');
   const user = await userFromToken(authHeader);
+  const existing = await getSubscription(user.id);
+  if (existing?.plan === 'lifetime' && existing.status === 'active') throw new HttpError(400, 'У вас уже бессрочный Premium');
   const orderId = randomUUID();
   const value = plan.price.toFixed(2);
   const description = `AURA Premium — ${plan.title}`;
@@ -190,6 +192,8 @@ export async function confirmOrder(orderId: string) {
     });
     if (flipped.length) {
       const cur = await getSubscription(order.user_id);
+      // never downgrade a lifetime subscription (e.g. from a promo code)
+      if (cur?.plan === 'lifetime' && cur.status === 'active') return { status: 'succeeded' as const, subscription: cur };
       const curEnd = cur && cur.status === 'active' ? new Date(cur.current_period_end) : new Date(0);
       const base = curEnd > new Date() ? curEnd : new Date();
       await db('subscriptions', {

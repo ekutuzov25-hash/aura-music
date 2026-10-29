@@ -7,7 +7,10 @@ import type { Track } from '../providers/types';
 import { useLibrary } from '../store/library';
 import { toast } from '../store/ui';
 import { shuffleArray } from '../lib/util';
-import { HtmlAudioEngine, SoundCloudWidgetEngine, type Engine, type EngineEvents } from './engines';
+import { findFullVersion } from '../providers/alternatives';
+import { SOURCE_META } from '../providers/registry';
+import { useSettings } from '../store/settings';
+import { HtmlAudioEngine, MixcloudWidgetEngine, SoundCloudWidgetEngine, type Engine, type EngineEvents } from './engines';
 import { usePlayerState as S, useProgress as P, type PlayContext } from './store';
 
 let loadSeq = 0;
@@ -55,12 +58,13 @@ const events = (owner: () => Engine): EngineEvents => ({
   },
   error(message) {
     if (engine !== owner()) return;
-    handleError(message);
+    void recover(message);
   },
 });
 
 const audio: HtmlAudioEngine = new HtmlAudioEngine(events((): Engine => audio));
 const widget: SoundCloudWidgetEngine = new SoundCloudWidgetEngine(events((): Engine => widget));
+const mixcloudEngine: MixcloudWidgetEngine = new MixcloudWidgetEngine(events((): Engine => mixcloudEngine));
 engine = audio;
 
 /** Get the next two tracks ready while this one plays, so skipping is near-instant. */
@@ -84,19 +88,48 @@ const current = (): Track | undefined => {
   return s.queue[s.index];
 };
 
+/** Put `alt` in place of the current track (queue and un-shuffled order). */
+function swapCurrent(alt: Track, orig: Track) {
+  const s = S.getState();
+  const swap = (list: Track[]) => list.map((x) => (x.id === orig.id ? alt : x));
+  S.setState({ queue: swap(s.queue), baseQueue: swap(s.baseQueue) });
+}
+
+/**
+ * A track failed at runtime (e.g. SoundCloud refused it). Before skipping,
+ * look for the same song in full on Audius and play that instead.
+ */
+async function recover(message: string) {
+  const t = current();
+  const seq = loadSeq;
+  if (t && useSettings.getState().autoFullVersion && t.source !== 'audius' && t.source !== 'local') {
+    S.setState({ status: 'loading' });
+    const alt = await findFullVersion(t);
+    if (seq !== loadSeq) return;
+    if (alt) {
+      swapCurrent(alt, t);
+      toast(`«${t.title}» закрыт в ${SOURCE_META[t.source].label} — играет полная версия от артиста на Audius`);
+      await loadCurrent(true);
+      return;
+    }
+  }
+  handleError(message);
+}
+
 function handleError(message: string) {
   const t = current();
   S.setState({ status: 'error', error: message });
   P.setState({ buffering: false });
   consecutiveErrors++;
   const { queue, index } = S.getState();
+  const openOriginal = t?.permalink ? { label: 'Открыть', run: () => window.open(t.permalink, '_blank', 'noopener') } : undefined;
   if (consecutiveErrors < 4 && index < queue.length - 1) {
-    toast(`${t?.title ?? 'Трек'}: ${message}. Переходим к следующему`, { tone: 'error' });
+    toast(`${t?.title ?? 'Трек'}: ${message}. Переходим к следующему`, { tone: 'error', action: openOriginal });
     setTimeout(() => {
       if (S.getState().status === 'error') void player.next(true);
     }, 1500);
   } else {
-    toast(message, { tone: 'error' });
+    toast(message, { tone: 'error', action: openOriginal });
   }
 }
 
@@ -110,6 +143,17 @@ async function loadCurrent(autoplay: boolean, startAt?: number) {
     return;
   }
   updateMediaSession(t);
+  // 30-second previews and tracks closed on their platform: prefer a full legal version
+  if (useSettings.getState().autoFullVersion && (t.playability === 'preview' || t.playability === 'external')) {
+    S.setState({ status: autoplay ? 'loading' : 'paused', error: undefined });
+    const alt = await findFullVersion(t, 2500);
+    if (seq !== loadSeq) return;
+    if (alt) {
+      swapCurrent(alt, t);
+      toast(`Нашли полную версию «${t.title}» от артиста на Audius`, { tone: 'success' });
+      return loadCurrent(autoplay, startAt);
+    }
+  }
   if (t.playability === 'unavailable' || t.playability === 'external') {
     handleError(t.playability === 'external' ? 'Доступен только на сайте источника' : 'Трек больше недоступен');
     return;
@@ -118,10 +162,11 @@ async function loadCurrent(autoplay: boolean, startAt?: number) {
   try {
     const stream = await getProvider(t.source).resolveStream(t);
     if (seq !== loadSeq) return;
-    const next = stream.kind === 'sc-widget' ? widget : audio;
+    const next = stream.kind === 'sc-widget' ? widget : stream.kind === 'mixcloud-widget' ? mixcloudEngine : audio;
     if (next !== engine) engine.stop();
     engine = next;
     widget.setActive(engine === widget);
+    mixcloudEngine.setActive(engine === mixcloudEngine);
     const vol = S.getState().muted ? 0 : S.getState().volume;
     engine.setVolume(vol);
     S.setState({ mode: stream.kind, isPreview: stream.kind === 'audio' && !!stream.preview });
@@ -139,7 +184,7 @@ async function loadCurrent(autoplay: boolean, startAt?: number) {
     }
   } catch (e) {
     if (seq !== loadSeq) return;
-    handleError((e as Error).message || 'Не удалось загрузить трек');
+    void recover((e as Error).message || 'Не удалось загрузить трек');
   }
 }
 

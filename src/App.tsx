@@ -12,6 +12,7 @@ import { NowPlaying } from './components/player/NowPlaying';
 import { QueuePanel } from './components/player/QueuePanel';
 import { useElapsedTitle } from './components/player/controls';
 import { TrackMenuHost } from './components/TrackRow';
+import { CustomCursor } from './components/CustomCursor';
 import { AddToPlaylistSheet, OfflineBanner, PaywallSheet, ShortcutsSheet, Toasts } from './components/GlobalOverlays';
 import { usePremium } from './billing/premium';
 import Home from './screens/Home';
@@ -124,7 +125,7 @@ export default function App() {
       <motion.div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
-        animate={{ background: `radial-gradient(70% 55% at 70% -5%, ${rgb(accent, 0.28)}, transparent 70%), radial-gradient(60% 50% at 0% 100%, ${rgb(accent, 0.1)}, transparent 70%)` }}
+        animate={{ background: `radial-gradient(70% 55% at 70% -5%, ${rgb(accent, 0.12)}, transparent 70%)` }}
         transition={{ duration: 1.2, ease: 'easeInOut' }}
       />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:rounded-full focus:bg-fg focus:px-4 focus:py-2 focus:text-bg">
@@ -168,6 +169,7 @@ export default function App() {
       <ShortcutsSheet />
       <PaywallSheet />
       <TrackMenuHost />
+      <CustomCursor />
       <Toasts />
       <OfflineBanner offline={!online} />
     </MotionConfig>

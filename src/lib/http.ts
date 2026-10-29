@@ -1,3 +1,4 @@
+import { get as idbGet, set as idbSet } from 'idb-keyval';
 import { ProviderError } from '../providers/types';
 
 /**
@@ -11,11 +12,23 @@ const MAX_ENTRIES = 300;
 
 export async function getJSON<T>(
   url: string,
-  opts: { ttl?: number; signal?: AbortSignal; timeout?: number } = {},
+  /**
+   * persistTtl: also keep the response in IndexedDB for this long, so catalog
+   * metadata (artists, sets, albums) survives restarts and opens instantly.
+   * Never used for responses that carry short-lived signed stream URLs.
+   */
+  opts: { ttl?: number; signal?: AbortSignal; timeout?: number; persistTtl?: number } = {},
 ): Promise<T> {
-  const ttl = opts.ttl ?? 5 * 60_000;
+  const ttl = Math.max(opts.ttl ?? 5 * 60_000, opts.persistTtl ?? 0);
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < ttl) return hit.data as T;
+  if (opts.persistTtl) {
+    const stored = await idbGet<{ at: number; data: T }>(`http:${url}`).catch(() => undefined);
+    if (stored && Date.now() - stored.at < opts.persistTtl) {
+      cache.set(url, stored);
+      return stored.data;
+    }
+  }
   if (!opts.signal && inflight.has(url)) return inflight.get(url) as Promise<T>;
 
   const p = (async () => {
@@ -52,7 +65,9 @@ export async function getJSON<T>(
       throw new ProviderError(body.error ?? `Ошибка источника (${res.status})`, res.status === 403 ? 'unavailable' : 'unknown');
     }
     const data = (await res.json()) as T;
-    cache.set(url, { at: Date.now(), data });
+    const entry = { at: Date.now(), data };
+    cache.set(url, entry);
+    if (opts.persistTtl) void idbSet(`http:${url}`, entry).catch(() => {});
     if (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value!);
     return data;
   })();

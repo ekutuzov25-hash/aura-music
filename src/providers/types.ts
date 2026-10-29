@@ -4,7 +4,7 @@
  * a self-hosted library…) means writing one new provider file.
  */
 
-export type SourceId = 'audius' | 'soundcloud' | 'itunes' | 'local';
+export type SourceId = 'audius' | 'soundcloud' | 'mixcloud' | 'archive' | 'itunes' | 'local';
 
 /**
  * full        — whole track streams legally through the source
@@ -41,6 +41,13 @@ export interface Track {
   /** source-provided mood tag, e.g. "Energizing" (Audius) */
   mood?: string;
   bpm?: number;
+  /** licence of the recording when the source states one (Internet Archive) */
+  license?: string;
+  /**
+   * Set when this is a full legal version standing in for a track that
+   * couldn't be played at its own source: the original's link and labels.
+   */
+  origin?: { source: SourceId; permalink?: string; title: string; artist: string };
 }
 
 export interface Artist {
@@ -82,7 +89,8 @@ export interface SearchResults {
 
 export type StreamInfo =
   | { kind: 'audio'; url: string; hls?: boolean; preview?: boolean; corsSafe: boolean; /** tried in order if `url` fails */ fallbacks?: string[] }
-  | { kind: 'sc-widget'; url: string };
+  | { kind: 'sc-widget'; url: string }
+  | { kind: 'mixcloud-widget'; url: string };
 
 export interface ProviderStatus {
   ready: boolean;

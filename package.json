@@ -1,7 +1,7 @@
 {
   "name": "aura",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.6",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,web -c magenta,cyan \"tsx watch --include .env server/index.ts\" \"vite\"",
@@ -13,7 +13,9 @@
     "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --outdir=dist-electron --out-extension:.js=.cjs",
     "desktop": "npm run build && npm run build:electron && electron .",
     "dist:mac": "npm run build && npm run build:electron && electron-builder --mac --arm64 && electron-builder --mac --x64",
-    "dist:win": "npm run build && npm run build:electron && electron-builder --win"
+    "dist:win": "npm run build && npm run build:electron && electron-builder --win",
+    "installers": "sh scripts/update-installers.sh",
+    "phone": "sh scripts/phone.sh"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.47.10",

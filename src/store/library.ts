@@ -10,6 +10,7 @@ import { FREE_PLAYLIST_LIMIT } from '../billing/plans';
 import { isPremiumNow } from '../billing/premium';
 import { useUI } from './ui';
 import { batchedStorage } from '../lib/storage';
+import { uuid } from '../lib/util';
 
 export interface PlaylistItem {
   track: Track;
@@ -108,7 +109,7 @@ export const useLibrary = create<LibraryState>()(
           if (atLimit()) return null;
           const n = get().playlists.length + 1;
           const pl: Playlist = {
-            id: crypto.randomUUID(),
+            id: uuid(),
             name: p.name?.trim() || `Мой плейлист №${n}`,
             description: p.description ?? '',
             cover: p.cover,
@@ -134,7 +135,7 @@ export const useLibrary = create<LibraryState>()(
           if (!src || atLimit()) return null;
           const copy: Playlist = {
             ...src,
-            id: crypto.randomUUID(),
+            id: uuid(),
             name: `${src.name} (копия)`,
             isPublic: false,
             createdAt: now(),

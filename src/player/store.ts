@@ -28,7 +28,7 @@ interface PlayerState {
   muted: boolean;
   shuffle: boolean;
   repeat: Repeat;
-  mode: 'audio' | 'sc-widget';
+  mode: 'audio' | 'sc-widget' | 'mixcloud-widget';
   isPreview: boolean;
   context?: PlayContext;
 }

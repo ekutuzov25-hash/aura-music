@@ -64,13 +64,13 @@ export function ArtistDetails() {
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-bg" />
         <div className="absolute inset-x-0 bottom-0 flex items-end gap-5 px-4 pb-6 md:px-8">
-          {a.avatar && <Artwork src={a.avatar} alt="" seed={a.id} className="hidden size-36 shrink-0 shadow-2xl md:block" rounded="rounded-full" eager />}
+          {a.avatar && <Artwork src={a.avatar} alt="" seed={a.id} className="hidden size-36 shrink-0 md:block" rounded="rounded-full" eager />}
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm font-semibold text-white/80">
               <SourceBadge source={a.source} />
               {a.verified && <span className="flex items-center gap-1"><BadgeCheck className="size-4 text-sky-400" />Подтверждённый артист</span>}
             </div>
-            <h1 className="text-balance mt-1 text-4xl font-extrabold tracking-tight text-white md:text-6xl">{a.name}</h1>
+            <h1 className="text-balance mt-1 text-4xl font-semibold tracking-tight text-white md:text-4xl">{a.name}</h1>
             <div className="mt-1 text-sm text-white/75">
               {a.followers != null && `${formatCount(a.followers)} подписчиков`}
               {a.trackCount != null && ` · ${a.trackCount} треков`}
@@ -144,7 +144,6 @@ export function CollectionDetails() {
 
   return (
     <div className="page-pad">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(80%_100%_at_30%_0%,rgb(var(--dyn)/0.3),transparent)]" aria-hidden />
       <CollectionHeader
         kind={`${c.kind === 'album' ? 'Альбом' : 'Плейлист'} · ${SOURCE_META[c.source].label}`}
         title={c.title}
@@ -199,7 +198,7 @@ export function MixDetails() {
         tracks={tracks}
         context={{ label: `Daily Mix · ${g}`, path: `/mix/${genre}` }}
         artworkNode={
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={softSpring} className="grid aspect-square w-full grid-cols-2 grid-rows-2 overflow-hidden rounded-[24px] shadow-2xl">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={softSpring} className="grid aspect-square w-full grid-cols-2 grid-rows-2 overflow-hidden rounded-[24px]">
             {tracks.slice(0, 4).map((t) => <Artwork key={t.id} src={t.artwork} alt="" seed={t.id} rounded="" className="size-full" />)}
           </motion.div>
         }

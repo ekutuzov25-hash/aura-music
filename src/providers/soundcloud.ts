@@ -14,7 +14,7 @@
 import { getJSON, qs } from '../lib/http';
 import type { Artist, Collection, MusicProvider, Playability, SearchResults, Track } from './types';
 import { ProviderError } from './types';
-import { artistFromUrl, collectionFromUrl, listFromWidget, normalizeScUrl } from './scWidget';
+import { artistFromUrl, collectionFromUrl, listFromWidget, normalizeScUrl, podcastStreamFor } from './scWidget';
 
 const isUrlId = (id: string) => id.startsWith('url:');
 const urlOf = (id: string) => id.slice(4);
@@ -168,6 +168,9 @@ export const soundcloud: MusicProvider = {
     };
   },
   async resolveStream(track) {
+    // the artist's own podcast feed has the full MP3: play it like any audio stream
+    const mp3 = podcastStreamFor(track.permalink);
+    if (mp3) return { kind: 'audio', url: mp3, corsSafe: true };
     if (track.sourceId.startsWith('url:') || !(await soundcloudApiReady())) {
       if (!track.permalink) throw new ProviderError('Нет ссылки на трек SoundCloud', 'unavailable');
       return { kind: 'sc-widget', url: track.permalink };

@@ -3,9 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { startSync } from './auth/sync';
+import { installButtonFx } from './lib/buttonFx';
 import './index.css';
 
 startSync();
+installButtonFx();
 
 // Desktop app (Electron): lets CSS leave room for the macOS window buttons.
 const desktop = (window as unknown as { auraDesktop?: { platform: string } }).auraDesktop;

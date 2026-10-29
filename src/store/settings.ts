@@ -22,6 +22,9 @@ interface SettingsState {
   haptics: boolean;
   dynamicColor: boolean;
   visualizer: boolean;
+  customCursor: boolean;
+  /** replace previews / blocked tracks with a full legal version from Audius when one exists */
+  autoFullVersion: boolean;
   enabledSources: SourceId[];
   searchHistory: string[];
   profile: Profile;
@@ -39,7 +42,9 @@ export const useSettings = create<SettingsState>()(
       haptics: true,
       dynamicColor: false,
       visualizer: true,
-      enabledSources: ['soundcloud', 'audius', 'itunes', 'local'],
+      customCursor: true,
+      autoFullVersion: true,
+      enabledSources: ['soundcloud', 'audius', 'mixcloud', 'archive', 'itunes', 'local'],
       searchHistory: [],
       profile: { displayName: 'Слушатель', username: '', bio: '', isPrivate: true, showHistory: true },
       set: (k, v) => set({ [k]: v } as Partial<SettingsState>),
@@ -52,11 +57,18 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'aura-settings',
-      version: 2,
+      version: 5,
       // v2: new black-and-white look — cover colours become opt-in
       migrate: (state, version) => {
         const s = state as { dynamicColor?: boolean };
         if (version < 2) s.dynamicColor = false;
+        if (version < 3) (s as { customCursor?: boolean }).customCursor = true;
+        if (version < 4) (s as { autoFullVersion?: boolean }).autoFullVersion = true;
+        // v5: new sources are switched on for existing users too
+        if (version < 5) {
+          const e = (s as { enabledSources?: string[] }).enabledSources ?? [];
+          (s as { enabledSources?: string[] }).enabledSources = [...new Set([...e, 'mixcloud', 'archive'])];
+        }
         return s as never;
       },
     },

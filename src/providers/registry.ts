@@ -1,12 +1,14 @@
+import { archive } from './archive';
 import { audius } from './audius';
 import { itunes } from './itunes';
 import { local } from './local';
+import { mixcloud } from './mixcloud';
 import { soundcloud } from './soundcloud';
 import type { MusicProvider, SearchResults, SourceId } from './types';
 import { emptyResults, ProviderError } from './types';
 
 /** Order matters: it's the order of results and of source chips in the UI. */
-export const providers: MusicProvider[] = [soundcloud, audius, itunes, local];
+export const providers: MusicProvider[] = [soundcloud, audius, mixcloud, archive, itunes, local];
 
 export const getProvider = (id: SourceId): MusicProvider => {
   const p = providers.find((x) => x.id === id);
@@ -17,6 +19,8 @@ export const getProvider = (id: SourceId): MusicProvider => {
 export const SOURCE_META: Record<SourceId, { label: string; short: string; color: string }> = {
   soundcloud: { label: 'SoundCloud', short: 'SC', color: '#ff5500' },
   audius: { label: 'Audius', short: 'AU', color: '#cc0fe0' },
+  mixcloud: { label: 'Mixcloud', short: 'MX', color: '#5b6cff' },
+  archive: { label: 'Internet Archive', short: 'IA', color: '#d6b46a' },
   itunes: { label: 'Apple · превью', short: '30s', color: '#fa2d48' },
   local: { label: 'Мои файлы', short: 'FILE', color: '#34c759' },
 };

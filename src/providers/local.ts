@@ -5,6 +5,7 @@
 import { del, get, set } from 'idb-keyval';
 import { useLibrary } from '../store/library';
 import type { MusicProvider, Track } from './types';
+import { uuid } from '../lib/util';
 
 const blobKey = (id: string) => `aura-file:${id}`;
 const urls = new Map<string, string>();
@@ -30,7 +31,7 @@ export async function importLocalFiles(files: FileList | File[]): Promise<Track[
   const added: Track[] = [];
   for (const file of Array.from(files)) {
     if (!file.type.startsWith('audio/') && !/\.(mp3|m4a|aac|wav|flac|ogg|opus)$/i.test(file.name)) continue;
-    const sourceId = crypto.randomUUID();
+    const sourceId = uuid();
     const base = file.name.replace(/\.[^.]+$/, '');
     // "Artist - Title.mp3" is the most common naming convention.
     const [artist, title] = base.includes(' - ') ? base.split(/ - (.+)/) : ['Мои файлы', base];

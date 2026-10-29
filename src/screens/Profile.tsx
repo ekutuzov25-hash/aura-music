@@ -202,7 +202,11 @@ function PremiumCard() {
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">{active ? 'AURA Premium активен' : 'AURA Premium'}</span>
         <span className="block text-sm text-fg-2">
-          {active && sub ? `До ${new Date(sub.current_period_end).toLocaleDateString('ru-RU')}` : '300 ₽ в месяц · 800 ₽ за 6 месяцев · 1200 ₽ за год'}
+          {active && sub
+            ? sub.plan === 'lifetime'
+              ? 'Навсегда'
+              : `До ${new Date(sub.current_period_end).toLocaleDateString('ru-RU')}`
+            : 'Есть промокод? Активируйте его здесь'}
         </span>
       </span>
       <ChevronRight className="size-5 text-fg-3" />
@@ -222,12 +226,11 @@ export default function ProfileScreen() {
 
   return (
     <div className="page-pad pt-[calc(12px+var(--safe-t))]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(70%_100%_at_50%_0%,rgb(var(--dyn)/0.35),transparent)]" aria-hidden />
       <header className="relative flex flex-col items-center px-4 pt-8 text-center md:flex-row md:items-end md:gap-6 md:px-8 md:text-left">
-        <Artwork src={profile.avatar} alt="Аватар" seed={profile.displayName} className="size-32 shadow-2xl md:size-40" rounded="rounded-full" eager />
+        <Artwork src={profile.avatar} alt="Аватар" seed={profile.displayName} className="size-32 md:size-40" rounded="rounded-full" eager />
         <div className="mt-4 min-w-0 flex-1 md:mt-0">
           <div className="text-xs font-bold tracking-[0.14em] text-fg-2 uppercase">Профиль{profile.isPrivate ? ' · приватный' : ' · публичный'}</div>
-          <h1 className="mt-1 text-4xl font-extrabold tracking-tight">{profile.displayName}</h1>
+          <h1 className="mt-1 text-4xl font-semibold tracking-tight">{profile.displayName}</h1>
           {profile.username && <div className="mt-0.5 text-fg-2">@{profile.username}</div>}
           {profile.bio && <p className="mt-2 max-w-xl text-[15px] text-fg-2">{profile.bio}</p>}
           <div className="mt-3 flex justify-center gap-5 text-sm md:justify-start">
@@ -243,7 +246,7 @@ export default function ProfileScreen() {
       </header>
 
       <section className="mt-10 px-4 md:px-8">
-        <h2 className="mb-3 text-[22px] font-bold tracking-tight">Аккаунт</h2>
+        <h2 className="mb-3 text-[19px] font-semibold tracking-tight">Аккаунт</h2>
         <AuthPanel />
         <PremiumCard />
       </section>
@@ -264,7 +267,7 @@ export default function ProfileScreen() {
 
       <section className="mt-9 px-4 md:px-8">
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-[22px] font-bold tracking-tight">Музыкальные предпочтения</h2>
+          <h2 className="text-[19px] font-semibold tracking-tight">Музыкальные предпочтения</h2>
           <button onClick={() => setPrefs(true)} className="text-sm font-semibold text-fg-2 hover:text-fg">Изменить</button>
         </div>
         {taste.hasData ? (
@@ -281,7 +284,7 @@ export default function ProfileScreen() {
       </section>
 
       <section className="mt-9 px-4 md:px-8">
-        <h2 className="mb-3 text-[22px] font-bold tracking-tight">Приватность</h2>
+        <h2 className="mb-3 text-[19px] font-semibold tracking-tight">Приватность</h2>
         <div className="divide-y divide-line rounded-[24px] bg-surface">
           {([
             ['isPrivate', 'Приватный профиль', 'Профиль и публичные плейлисты видны только вам (действует при включённой синхронизации)'],

@@ -94,7 +94,7 @@ export function AuraHero() {
         </Pressable>
 
         <div className="w-full min-w-0 flex-1 text-center md:text-left">
-          <h2 className="text-3xl font-extrabold tracking-tight">Моя аура</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">Моя аура</h2>
           <p className="mt-1 text-[15px] text-fg-2">
             {hasTaste
               ? 'Бесконечный поток под ваш вкус. Учится на лайках, пропусках и «Не нравится».'

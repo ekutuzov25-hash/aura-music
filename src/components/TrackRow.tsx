@@ -12,6 +12,7 @@ import { player } from '../player/controller';
 import { usePlayerState, type PlayContext } from '../player/store';
 import { useLibrary } from '../store/library';
 import { toast, useUI } from '../store/ui';
+import { useSettings } from '../store/settings';
 import { cn, formatTime } from '../lib/util';
 import { Artwork, IconButton, PlayingBars, SourceBadge } from './ui/primitives';
 import { Menu, type MenuItem } from './ui/overlays';
@@ -76,7 +77,10 @@ export function TrackMenuHost() {
           label: 'Скопировать ссылку',
           icon: <Link2 />,
           hidden: !t.permalink,
-          onSelect: () => navigator.clipboard?.writeText(t.permalink!).then(() => toast('Ссылка скопирована')),
+          onSelect: () =>
+            navigator.clipboard
+              ? navigator.clipboard.writeText(t.permalink!).then(() => toast('Ссылка скопирована'))
+              : window.prompt('Скопируйте ссылку:', t.permalink), // no clipboard API over plain http
         },
         ...(state?.extra ?? []),
       ]
@@ -135,6 +139,8 @@ export const TrackRow = memo(function TrackRow({
   const play = () => {
     if (isCurrent) return player.toggle();
     if (blocked) {
+      // closed on its platform: the player will look for a full legal version first
+      if (t.playability === 'external' && useSettings.getState().autoFullVersion) return void player.playTracks([t], 0, context);
       if (t.permalink && t.playability === 'external') window.open(t.permalink, '_blank', 'noopener');
       else toast('Трек недоступен для воспроизведения', { tone: 'error' });
       return;

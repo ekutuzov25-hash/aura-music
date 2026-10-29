@@ -60,17 +60,19 @@ export default function SettingsScreen() {
 
   return (
     <div className="page-pad pt-[calc(12px+var(--safe-t))]">
-      <h1 className="px-4 pt-3 text-3xl font-extrabold tracking-tight md:px-8 md:pt-6">Настройки</h1>
+      <h1 className="px-4 pt-3 text-3xl font-semibold tracking-tight md:px-8 md:pt-6">Настройки</h1>
 
       <Group title="Внешний вид">
         <Segmented<ThemePref> label="Тема" value={s.theme} onChange={(v) => s.set('theme', v)} options={[['dark', 'Тёмная'], ['light', 'Светлая'], ['system', 'Авто']]} />
         <Toggle title="Цвет от обложки" desc="Интерфейс плавно перекрашивается под текущий трек" checked={s.dynamicColor} onChange={(v) => s.set('dynamicColor', v)} />
+        <Toggle title="Фирменный курсор" desc="Стеклянное кольцо вместо обычной стрелки (только с мышью или трекпадом)" checked={s.customCursor} onChange={(v) => s.set('customCursor', v)} />
         <Toggle title="Облегчённое стекло" desc="Отключает размытие фона — быстрее на слабых устройствах" checked={s.liteGlass} onChange={(v) => s.set('liteGlass', v)} />
       </Group>
 
       <Group title="Анимации и отклик">
         <Segmented<MotionPref> label="Анимации" value={s.motion} onChange={(v) => s.set('motion', v)} options={[['full', 'Полные'], ['reduced', 'Меньше'], ['system', 'Как в системе']]} />
         <Toggle title="Визуализатор" desc="Спектр звука в реальном времени. На iOS может мешать фоновому воспроизведению" checked={s.visualizer} onChange={(v) => s.set('visualizer', v)} />
+        <Toggle title="Искать полные версии" desc="Если трек играет только 30 секунд или закрыт на SoundCloud, AURA включит полную версию, которую сам артист выложил на Audius (если она там есть). Каверы и перезаливы не подставляются" checked={s.autoFullVersion} onChange={(v) => s.set('autoFullVersion', v)} />
         <Toggle title="Тактильный отклик" desc={'vibrate' in navigator ? 'Лёгкая вибрация при нажатиях' : 'Не поддерживается этим браузером'} checked={s.haptics} onChange={(v) => s.set('haptics', v)} />
       </Group>
 

@@ -46,9 +46,10 @@ export function IconButton({
     <Pressable
       label={label}
       aria-pressed={active}
+      whileTap={undefined}
       className={cn(
         s,
-        'grid place-items-center rounded-full transition-colors hover:bg-surface-hover',
+        'fx fx-icon grid place-items-center rounded-full hover:bg-surface-hover',
         active ? 'text-dyn' : 'text-fg-2 hover:text-fg',
         className,
       )}
@@ -65,8 +66,10 @@ export function Button({
 }: PressableProps & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger' }) {
   return (
     <Pressable
+      whileTap={undefined}
       className={cn(
-        'inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[15px] font-semibold transition-colors',
+        'fx inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[15px] font-semibold',
+        variant !== 'ghost' && 'fx-shine',
         variant === 'primary' && 'bg-fg text-bg hover:opacity-90',
         variant === 'secondary' && 'glass text-fg hover:bg-surface-hover',
         variant === 'ghost' && 'text-fg-2 hover:bg-surface-hover hover:text-fg',
@@ -145,10 +148,9 @@ export function SourceBadge({ source, preview, className }: { source: SourceId; 
     <span
       title={`Источник: ${m.label}`}
       className={cn(
-        'inline-flex h-[18px] shrink-0 items-center gap-1 rounded-full px-1.5 text-[10px] font-bold tracking-wide uppercase',
+        'inline-flex h-[16px] shrink-0 items-center gap-1 text-[10px] font-medium tracking-wide text-fg-3 uppercase',
         className,
       )}
-      style={{ background: 'var(--surface-hover)', color: 'var(--fg-2)' }}
     >
       <span className="size-1.5 rounded-full" style={{ background: m.color }} />
       {preview ? '30s' : m.short}
@@ -162,7 +164,7 @@ export function SectionHeader({ title, subtitle, action }: { title: string; subt
   return (
     <div className="mb-3 flex items-end justify-between gap-4 px-4 md:px-8">
       <div className="min-w-0">
-        <h2 className="truncate text-[22px] font-bold tracking-tight">{title}</h2>
+        <h2 className="truncate text-[19px] font-semibold tracking-tight">{title}</h2>
         {subtitle && <p className="mt-0.5 truncate text-sm text-fg-2">{subtitle}</p>}
       </div>
       {action}
@@ -211,8 +213,9 @@ export function Chip({ active, className, ...rest }: PressableProps & { active?:
   return (
     <Pressable
       aria-pressed={active}
+      whileTap={undefined}
       className={cn(
-        'h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium whitespace-nowrap transition-colors',
+        'fx h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium whitespace-nowrap',
         active ? 'bg-fg text-bg' : 'bg-surface text-fg-2 hover:bg-surface-hover hover:text-fg',
         className,
       )}

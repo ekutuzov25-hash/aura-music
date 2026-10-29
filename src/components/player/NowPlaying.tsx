@@ -45,7 +45,7 @@ export function NowPlaying() {
   }, [t, setOpen]);
 
   const playing = status === 'playing';
-  const widget = mode === 'sc-widget';
+  const widget = mode !== 'audio';
 
   return (
     <AnimatePresence>
@@ -112,7 +112,7 @@ export function NowPlaying() {
                     src={t.artworkXL ?? t.artworkLarge ?? t.artwork}
                     alt={`Обложка: ${t.title}`}
                     seed={t.id}
-                    className="size-full shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)]"
+                    className="size-full shadow-[0_20px_50px_-24px_rgba(0,0,0,0.6)]"
                     rounded="rounded-[28px]"
                     eager
                   />
@@ -184,14 +184,17 @@ export function NowPlaying() {
                 {/* Source attribution + honest status */}
                 <div className="mt-5 flex flex-wrap items-center gap-2 text-[13px] text-fg-2">
                   <SourceBadge source={t.source} preview={isPreview} />
-                  <span>{SOURCE_META[t.source].label}</span>
-                  {t.permalink && (
-                    <a href={t.permalink} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-medium text-fg hover:underline">
+                  <span>
+                    {t.origin ? `Играет с ${SOURCE_META[t.source].label} · оригинал на ${SOURCE_META[t.origin.source].label}` : SOURCE_META[t.source].label}
+                    {t.license && ` · ${t.license}`}
+                  </span>
+                  {(t.origin?.permalink ?? t.permalink) && (
+                    <a href={t.origin?.permalink ?? t.permalink} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-medium text-fg hover:underline">
                       Открыть оригинал <ExternalLink className="size-3.5" />
                     </a>
                   )}
                 </div>
-                {(isPreview || widget || status === 'error') && (
+                {(isPreview || status === 'error') && (
                   <div className="mt-3 flex gap-2 rounded-2xl bg-surface p-3 text-[13px] text-fg-2">
                     <Info className="mt-0.5 size-4 shrink-0" />
                     <span>
@@ -203,7 +206,7 @@ export function NowPlaying() {
                     </span>
                   </div>
                 )}
-                {widget && <div className="h-[132px] shrink-0" aria-hidden />}
+                {widget && <div className={mode === 'mixcloud-widget' ? 'h-[72px] shrink-0' : 'h-8 shrink-0'} aria-hidden />}
               </div>
             </div>
           </div>

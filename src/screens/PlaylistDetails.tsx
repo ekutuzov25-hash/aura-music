@@ -116,7 +116,6 @@ export default function PlaylistDetails() {
 
   return (
     <div className="page-pad">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(80%_100%_at_30%_0%,rgb(var(--dyn)/0.35),transparent)]" aria-hidden />
       <CollectionHeader
         kind={pl.isPublic ? 'Публичный плейлист' : 'Приватный плейлист'}
         title={pl.name}

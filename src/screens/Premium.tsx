@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, Crown, Loader2, ShieldCheck } from 'lucide-react';
+import { Check, Crown, Loader2, Send, ShieldCheck, Ticket } from 'lucide-react';
 import { PREMIUM_FEATURES } from '../billing/features';
 import { useAuth } from '../auth/auth';
 import { PLANS, savingPercent, type PlanId } from '../billing/plans';
@@ -14,6 +14,77 @@ import { Button, Pressable, softSpring } from '../components/ui/primitives';
 const rub = (n: number) => `${n.toLocaleString('ru-RU')} ₽`;
 const date = (iso: string) => new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 const isDesktop = () => !!(window as unknown as { auraDesktop?: unknown }).auraDesktop;
+
+export const TELEGRAM_SHOP = 'https://t.me/dbxxl';
+
+const PLAN_LABEL: Record<string, string> = { month: '1 месяц', half_year: '6 месяцев', year: '12 месяцев', lifetime: 'навсегда' };
+
+/** Activate a promo code on the signed-in account; buy codes via Telegram. */
+function PromoBox() {
+  const user = useAuth((s) => s.user);
+  const redeem = usePremium((s) => s.redeemPromo);
+  const navigate = useNavigate();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return navigate('/profile');
+    setBusy(true);
+    setError('');
+    try {
+      const sub = await redeem(code);
+      setCode('');
+      toast(
+        sub.plan === 'lifetime' ? 'Промокод активирован — Premium навсегда!' : `Промокод активирован — Premium до ${date(sub.current_period_end)}`,
+        { tone: 'success' },
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="glass mx-4 mt-6 rounded-[28px] p-5 md:mx-8 md:p-7">
+      <div className="flex items-center gap-2 text-sm font-bold text-fg-2">
+        <Ticket className="size-4" /> Промокод
+      </div>
+      <h2 className="mt-1.5 text-lg font-semibold tracking-tight">Активируйте Premium промокодом</h2>
+      <p className="mt-1 text-sm text-fg-2">
+        Промокоды бывают на {Object.values(PLAN_LABEL).join(', ')}. Один промокод — один аккаунт: после активации его нельзя использовать повторно.
+      </p>
+      <form onSubmit={submit} className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <label htmlFor="promo" className="sr-only">Промокод</label>
+        <input
+          id="promo"
+          value={code}
+          onChange={(e) => (setCode(e.target.value.toUpperCase()), setError(''))}
+          placeholder="AURA-XXXX-XXXX-XXXX"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          className="h-12 min-w-0 flex-1 rounded-full bg-surface px-5 font-mono text-[15px] tracking-wider placeholder:text-fg-3"
+        />
+        <Button type="submit" className="h-12" disabled={busy || (!!user && code.replace(/[^A-Za-z0-9]/g, '').length < 12)}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+          {user ? 'Активировать' : 'Войти, чтобы активировать'}
+        </Button>
+      </form>
+      {error && <p className="mt-2 text-sm text-red-400" role="alert">{error}</p>}
+      <a
+        href={TELEGRAM_SHOP}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-4 inline-flex h-11 items-center gap-2 rounded-full bg-surface-hover px-5 text-sm font-semibold hover:bg-surface"
+      >
+        <Send className="size-4" /> Купить промокод — напишите в Telegram @dbxxl
+      </a>
+    </section>
+  );
+}
 
 /** Polls the server until YooKassa reports a final status (max ~2 min). */
 function useOrderStatus() {
@@ -92,21 +163,20 @@ export default function Premium() {
   const blocker = !config
     ? null
     : !config.accounts
-      ? 'Аккаунты ещё не подключены на сервере (Supabase), поэтому оформить подписку пока нельзя.'
+      ? 'Оплата картой пока не подключена. Чтобы получить Premium, купите промокод в Telegram @dbxxl и активируйте его выше.'
       : !config.payments
-        ? 'Оплата ещё не подключена: владельцу приложения нужно добавить ключи ЮKassa на сервер.'
+        ? 'Оплата картой пока не подключена. Чтобы получить Premium, купите промокод в Telegram @dbxxl и активируйте его выше.'
         : null;
 
   return (
     <div className="page-pad pt-[calc(12px+var(--safe-t))]">
-      <section className="relative isolate mx-4 mt-3 overflow-hidden rounded-[32px] p-6 md:mx-8 md:mt-6 md:p-10">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(90%_120%_at_0%_0%,#ffffff_0%,#a1a1aa_30%,#27272a_70%,#07070a_100%)]" aria-hidden />
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={softSpring} className="text-white">
-          <div className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm font-semibold">
+      <section className="glass mx-4 mt-3 overflow-hidden rounded-[32px] p-6 md:mx-8 md:mt-6 md:p-10">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={softSpring} className="text-fg">
+          <div className="inline-flex items-center gap-2 text-sm font-medium text-fg-2">
             <Crown className="size-4" /> AURA Premium
           </div>
-          <h1 className="text-balance mt-4 max-w-xl text-4xl font-extrabold tracking-tight md:text-5xl">Больше возможностей для вашей музыки</h1>
-          <p className="mt-3 max-w-lg text-[15px] text-white/80">Слушать музыку в AURA можно бесплатно. Premium открывает дополнительные функции приложения.</p>
+          <h1 className="text-balance mt-4 max-w-xl text-4xl font-semibold tracking-tight md:text-5xl">Больше возможностей для вашей музыки</h1>
+          <p className="mt-3 max-w-lg text-[15px] text-fg-2">Слушать музыку в AURA можно бесплатно. Premium открывает дополнительные функции приложения.</p>
         </motion.div>
       </section>
 
@@ -123,7 +193,11 @@ export default function Premium() {
             <>
               <ShieldCheck className="size-5 text-emerald-400" />
               <span className="text-sm">
-                <b>Premium активен</b> до {date(subscription.current_period_end)}. Новая оплата продлит подписку с этой даты.
+                {subscription.plan === 'lifetime' ? (
+                  <><b>Premium активен навсегда.</b> Спасибо, что вы с AURA!</>
+                ) : (
+                  <><b>Premium активен</b> до {date(subscription.current_period_end)}. Новый промокод или оплата продлят подписку с этой даты.</>
+                )}
               </span>
             </>
           ) : order.state === 'canceled' ? (
@@ -131,6 +205,8 @@ export default function Premium() {
           ) : null}
         </div>
       )}
+
+      <PromoBox />
 
       <section className="mt-8 grid gap-3 px-4 sm:grid-cols-2 md:px-8 lg:grid-cols-4">
         {PREMIUM_FEATURES.map(({ icon: Icon, title, text }) => (
@@ -143,7 +219,7 @@ export default function Premium() {
       </section>
 
       <section className="mt-8 px-4 md:px-8">
-        <h2 className="mb-3 text-[22px] font-bold tracking-tight">Выберите срок</h2>
+        <h2 className="mb-3 text-[19px] font-semibold tracking-tight">Выберите срок</h2>
         <div className="grid gap-3 md:grid-cols-3" role="radiogroup" aria-label="Тариф">
           {PLANS.map((p) => {
             const on = p.id === plan;
@@ -161,7 +237,7 @@ export default function Premium() {
               >
                 {p.badge && <span className="absolute top-4 right-4 rounded-full bg-fg px-2.5 py-0.5 text-[11px] font-bold text-bg">{p.badge}</span>}
                 <div className="text-sm font-semibold text-fg-2">{p.title}</div>
-                <div className="mt-2 text-3xl font-extrabold tracking-tight">{rub(p.price)}</div>
+                <div className="mt-2 text-3xl font-semibold tracking-tight">{rub(p.price)}</div>
                 <div className="mt-1 text-sm text-fg-2">
                   {p.months > 1 ? `${rub(Math.round(p.price / p.months))} в месяц` : 'в месяц'}
                   {save > 0 && <span className="ml-2 font-semibold text-emerald-400">−{save}%</span>}

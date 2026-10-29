@@ -42,11 +42,11 @@ export function CollectionHeader({
     <header className="relative px-4 pt-6 md:px-8 md:pt-10">
       <div className="flex flex-col items-center gap-6 md:flex-row md:items-end">
         <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={softSpring} className="w-[min(64vw,240px)] shrink-0">
-          {artworkNode ?? <Artwork src={artwork} alt="" seed={seed} className="aspect-square w-full shadow-[0_24px_60px_-18px_rgba(0,0,0,0.6)]" rounded="rounded-[24px]" eager />}
+          {artworkNode ?? <Artwork src={artwork} alt="" seed={seed} className="aspect-square w-full" rounded="rounded-[24px]" eager />}
         </motion.div>
         <div className="min-w-0 flex-1 text-center md:text-left">
           <div className="text-xs font-bold tracking-[0.14em] text-fg-2 uppercase">{kind}</div>
-          <h1 className="text-balance mt-1 text-3xl font-extrabold tracking-tight break-words md:text-5xl">{title}</h1>
+          <h1 className="text-balance mt-1 text-3xl font-semibold tracking-tight break-words md:text-4xl">{title}</h1>
           {description && <p className="mt-2 line-clamp-2 text-[15px] text-fg-2">{description}</p>}
           <div className="mt-2 text-sm text-fg-2">
             {subtitle}

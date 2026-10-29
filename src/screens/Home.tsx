@@ -105,7 +105,7 @@ export default function Home() {
         </Link>
         <div className="min-w-0 flex-1">
           <div className="text-sm text-fg-2">{greeting()},</div>
-          <h1 className="truncate text-2xl font-extrabold tracking-tight">{profile.displayName}</h1>
+          <h1 className="truncate text-2xl font-semibold tracking-tight">{profile.displayName}</h1>
         </div>
         <IconButton label="Поиск" onClick={() => navigate('/search')} className="glass text-fg">
           <Search className="size-5" />
@@ -116,7 +116,7 @@ export default function Home() {
 
       {/* ── Onboarding when we know nothing about the listener ── */}
       {!taste.hasData && (
-        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={softSpring} className="mx-4 mt-6 overflow-hidden rounded-[28px] bg-[radial-gradient(120%_120%_at_0%_0%,rgb(var(--dyn)/0.45),transparent_60%),var(--surface)] p-6 md:mx-8 md:p-8">
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={softSpring} className="glass mx-4 mt-6 overflow-hidden rounded-[28px] p-6 md:mx-8 md:p-8">
           <Sparkles className="size-7 text-dyn" />
           <h2 className="mt-3 text-2xl font-bold tracking-tight">Настроим AURA под вас</h2>
           <p className="mt-1.5 max-w-lg text-[15px] text-fg-2">Выберите любимые жанры и исполнителей — рекомендации и Daily Mix будут строиться на них. Без этого мы не выдаём случайные треки за «персональные».</p>
@@ -168,12 +168,12 @@ export default function Home() {
               {mixes.data!.map((m, i) => (
                 <motion.div key={m.id} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...softSpring, delay: i * 0.05 }} className="w-[148px] shrink-0 snap-start md:w-[176px]">
                   <Link to={`/mix/${encodeURIComponent(m.genre)}`} className="block">
-                    <div className="relative aspect-square overflow-hidden rounded-2xl shadow-lg">
+                    <div className="relative aspect-square overflow-hidden rounded-2xl">
                       <div className="grid size-full grid-cols-2 grid-rows-2">
                         {m.tracks.slice(0, 4).map((t) => <Artwork key={t.id} src={t.artwork} alt="" seed={t.id} rounded="" className="size-full" />)}
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-                      <div className="absolute bottom-3 left-3 text-lg leading-tight font-extrabold text-white">{m.title}</div>
+                      <div className="absolute bottom-3 left-3 text-lg leading-tight font-semibold text-white">{m.title}</div>
                     </div>
                     <div className="mt-2.5 truncate text-[13px] text-fg-2">{m.reason}</div>
                   </Link>
@@ -187,7 +187,7 @@ export default function Home() {
       {/* ── SoundCloud ── */}
       <section className="glass mx-4 mt-9 rounded-[28px] p-5 md:mx-8 md:p-7">
         <div className="flex items-center gap-2 text-sm font-bold text-fg-2"><span className="size-2 rounded-full bg-[#ff5500]" /> SoundCloud</div>
-        <h2 className="mt-1.5 text-xl font-bold tracking-tight">Любой артист или плейлист SoundCloud — целиком</h2>
+        <h2 className="mt-1.5 text-lg font-semibold tracking-tight">Любой артист или плейлист SoundCloud — целиком</h2>
         <p className="mt-1 max-w-2xl text-sm text-fg-2">
           {scApi.data
             ? 'Ищите треки, сеты и ремиксы SoundCloud во вкладке «Поиск» или вставьте ссылку.'

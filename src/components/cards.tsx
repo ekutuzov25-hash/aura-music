@@ -5,6 +5,7 @@ import { BadgeCheck, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react
 import type { Artist, Collection, Track } from '../providers/types';
 import { player } from '../player/controller';
 import { warmTrack } from '../providers/registry';
+import { useSettings } from '../store/settings';
 import { usePlayerState, type PlayContext } from '../player/store';
 import { cn, formatCount } from '../lib/util';
 import { Artwork, IconButton, Pressable, Skeleton, SourceBadge, spring } from './ui/primitives';
@@ -97,6 +98,7 @@ export const TrackCard = memo(function TrackCard({
     const playable = list.filter((x) => x.playability === 'full' || x.playability === 'preview');
     const i = playable.findIndex((x) => x.id === t.id);
     if (i < 0) {
+      if (t.playability === 'external' && useSettings.getState().autoFullVersion) return void player.playTracks([t], 0, context);
       if (t.permalink) window.open(t.permalink, '_blank', 'noopener');
       return;
     }
@@ -126,7 +128,7 @@ export const TrackCard = memo(function TrackCard({
       >
         <div className="relative">
           <motion.div whileHover={{ scale: 1.025 }} transition={spring}>
-            <Artwork src={t.artworkLarge ?? t.artwork} alt="" seed={t.id} className="aspect-square w-full shadow-lg" rounded="rounded-2xl" />
+            <Artwork src={t.artworkLarge ?? t.artwork} alt="" seed={t.id} className="aspect-square w-full" rounded="rounded-2xl" />
           </motion.div>
           <PlayFab onClick={play} playing={isCurrent && playing} label={isCurrent && playing ? 'Пауза' : 'Играть'} />
         </div>
@@ -153,7 +155,7 @@ export const CollectionCard = memo(function CollectionCard({ c, index, to }: { c
     <motion.div variants={cardIn} initial="hidden" whileInView="show" viewport={{ once: true, margin: '80px' }} custom={index} className="group w-[148px] shrink-0 snap-start md:w-[176px]">
       <Link to={to ?? collectionPath(c.id)} className="block">
         <motion.div whileHover={{ scale: 1.025 }} transition={spring}>
-          <Artwork src={c.artwork} alt="" seed={c.id} className="aspect-square w-full shadow-lg" rounded="rounded-2xl" />
+          <Artwork src={c.artwork} alt="" seed={c.id} className="aspect-square w-full" rounded="rounded-2xl" />
         </motion.div>
         <div className="mt-2.5 truncate text-[14px] font-semibold">{c.title}</div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-fg-2">
@@ -172,7 +174,7 @@ export const ArtistCard = memo(function ArtistCard({ a, index }: { a: Artist; in
     <motion.div variants={cardIn} initial="hidden" whileInView="show" viewport={{ once: true, margin: '80px' }} custom={index} className="w-[130px] shrink-0 snap-start text-center md:w-[156px]">
       <Link to={artistPath(a.id)} className="block">
         <motion.div whileHover={{ scale: 1.03 }} transition={spring}>
-          <Artwork src={a.avatar} alt="" seed={a.id} className="aspect-square w-full shadow-lg" rounded="rounded-full" />
+          <Artwork src={a.avatar} alt="" seed={a.id} className="aspect-square w-full" rounded="rounded-full" />
         </motion.div>
         <div className="mt-2.5 flex items-center justify-center gap-1 truncate text-[14px] font-semibold">
           <span className="truncate">{a.name}</span>

@@ -76,7 +76,7 @@ export default function LibraryScreen() {
   return (
     <div className="page-pad pt-[calc(12px+var(--safe-t))]">
       <header className="flex items-center justify-between px-4 pt-3 md:px-8 md:pt-6">
-        <h1 className="text-3xl font-extrabold tracking-tight">Библиотека</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Библиотека</h1>
         <Button variant="secondary" className="h-10 px-4" onClick={newPlaylist}>
           <Plus className="size-4" /> Плейлист
         </Button>
@@ -124,7 +124,7 @@ export default function LibraryScreen() {
         {tab === 'liked' &&
           (lib.likes.length ? (
             <>
-              <CollectionHeader kind="Коллекция" title="Любимые треки" seed="liked" tracks={liked} context={{ label: 'Любимые треки', path: '/library?tab=liked' }} artworkNode={<div className="grid aspect-square w-full place-items-center rounded-[24px] bg-gradient-to-br from-zinc-100 via-zinc-400 to-zinc-800 shadow-2xl"><Heart className="size-1/3 fill-black/80 text-black/80" /></div>} />
+              <CollectionHeader kind="Коллекция" title="Любимые треки" seed="liked" tracks={liked} context={{ label: 'Любимые треки', path: '/library?tab=liked' }} artworkNode={<div className="grid aspect-square w-full place-items-center rounded-[24px] bg-gradient-to-br from-zinc-100 via-zinc-400 to-zinc-800"><Heart className="size-1/3 fill-black/80 text-black/80" /></div>} />
               <TrackList tracks={liked} context={{ label: 'Любимые треки', path: '/library?tab=liked' }} className="mt-6 px-2 md:px-6" />
             </>
           ) : (

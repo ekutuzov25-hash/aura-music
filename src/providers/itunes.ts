@@ -16,9 +16,9 @@ interface ISong {
 
 const art = (u?: string, size = 600) => u?.replace(/\/\d+x\d+bb\./, `/${size}x${size}bb.`);
 const search = (params: Record<string, string | number>, signal?: AbortSignal) =>
-  getJSON<{ results: ISong[] }>(`https://itunes.apple.com/search?${qs(params)}`, { signal, ttl: 30 * 60_000 }).then((r) => r.results);
+  getJSON<{ results: ISong[] }>(`https://itunes.apple.com/search?${qs(params)}`, { signal, persistTtl: 6 * 60 * 60_000 }).then((r) => r.results);
 const lookup = (params: Record<string, string | number>) =>
-  getJSON<{ results: ISong[] }>(`https://itunes.apple.com/lookup?${qs(params)}`, { ttl: 30 * 60_000 }).then((r) => r.results);
+  getJSON<{ results: ISong[] }>(`https://itunes.apple.com/lookup?${qs(params)}`, { persistTtl: 6 * 60 * 60_000 }).then((r) => r.results);
 
 const mapTrack = (s: ISong): Track => ({
   id: `itunes:${s.trackId}`,

@@ -28,7 +28,7 @@ const TYPES = [
 ] as const;
 type TypeKey = (typeof TYPES)[number][0];
 
-const SOURCES: Array<SourceId | 'all'> = ['all', 'soundcloud', 'audius', 'itunes', 'local'];
+const SOURCES: Array<SourceId | 'all'> = ['all', 'soundcloud', 'audius', 'mixcloud', 'archive', 'itunes', 'local'];
 
 function RowsSkeleton() {
   return (
@@ -143,7 +143,7 @@ export default function Search() {
   return (
     <div className="page-pad pt-[calc(12px+var(--safe-t))]">
       <div className="sticky top-0 z-20 px-4 pt-3 pb-4 md:px-8 md:pt-6">
-        <h1 className="mb-3 text-3xl font-extrabold tracking-tight md:hidden">Поиск</h1>
+        <h1 className="mb-3 text-3xl font-semibold tracking-tight md:hidden">Поиск</h1>
         <div className="relative">
           <form
             role="search"

@@ -26,7 +26,7 @@ interface WSound {
   playback_count?: number;
   likes_count?: number;
   created_at?: string;
-  user?: { username?: string; avatar_url?: string; permalink_url?: string };
+  user?: { id?: number; username?: string; avatar_url?: string; permalink_url?: string };
 }
 interface WidgetApi {
   bind(ev: string, cb: () => void): void;
@@ -76,6 +76,8 @@ export function scLinkKind(url: string): ScLinkKind {
   if (path[1] === 'likes') return 'likes';
   if (['tracks', 'albums', 'popular-tracks', 'reposts'].includes(path[1])) return 'profile';
   if (path.length === 2) return 'track';
+  // private share links: /artist/track/s-AbCdE (the secret token is part of the path)
+  if (path.length === 3 && /^s-[\w-]+$/.test(path[2])) return 'track';
   return 'other';
 }
 
@@ -114,7 +116,8 @@ export async function listFromWidget(url: string): Promise<Track[]> {
   if (hit && Date.now() - hit.at < 10 * 60_000) return hit.tracks;
   const SC = await loadApi();
 
-  const tracks = await new Promise<Track[]>((resolve, reject) => {
+  let userId: number | undefined;
+  let tracks = await new Promise<Track[]>((resolve, reject) => {
     const f = document.createElement('iframe');
     f.setAttribute('aria-hidden', 'true');
     f.tabIndex = -1;
@@ -137,6 +140,7 @@ export async function listFromWidget(url: string): Promise<Track[]> {
         w.getSounds((sounds) => {
           const ready = sounds.filter((s) => s.title).length;
           if ((ready === sounds.length && ready === last) || tries++ > 12) {
+            userId = sounds.find((x) => x.user?.id)?.user?.id;
             return done(() => resolve(sounds.map(mapWidgetSound).filter((t): t is Track => !!t)));
           }
           last = ready;
@@ -145,6 +149,8 @@ export async function listFromWidget(url: string): Promise<Track[]> {
       setTimeout(poll, 800);
     });
   });
+  // profile pages: add the artist's podcast feed (often every DJ set, as full MP3s)
+  if (userId && scLinkKind(key) === 'profile') tracks = await withPodcast(userId, tracks);
   listCache.set(key, { at: Date.now(), tracks });
   return tracks;
 }
@@ -156,7 +162,7 @@ interface OEmbed {
   thumbnail_url?: string;
   description?: string;
 }
-const oembed = (url: string) => getJSON<OEmbed>(`https://soundcloud.com/oembed?${qs({ format: 'json', url: normalizeScUrl(url) })}`, { ttl: 30 * 60_000 });
+const oembed = (url: string) => getJSON<OEmbed>(`https://soundcloud.com/oembed?${qs({ format: 'json', url: normalizeScUrl(url) })}`, { persistTtl: 24 * 60 * 60_000 });
 
 /** Artist page data for a profile URL (name and avatar from oEmbed, tracks from the widget). */
 export async function artistFromUrl(url: string): Promise<Artist> {
@@ -193,6 +199,44 @@ export async function collectionFromUrl(url: string): Promise<Collection> {
     tracks,
     permalink: u,
   };
+}
+
+// ───────────── SoundCloud podcast feeds (via our server, see server/scfeed.ts) ─────────────
+interface FeedItem { title: string; link: string; mp3: string; duration: number; published?: string; image?: string }
+const podcastStreams = new Map<string, string>(); // permalink → MP3
+
+/** Full MP3 for a SoundCloud track, if its author publishes it in their podcast feed. */
+export const podcastStreamFor = (permalink?: string) => (permalink ? podcastStreams.get(normalizeScUrl(permalink)) : undefined);
+
+async function withPodcast(userId: number, tracks: Track[]): Promise<Track[]> {
+  let feed: { author: string; items: FeedItem[] };
+  try {
+    feed = await getJSON(`/api/sc-feed?user=${userId}`, { ttl: 15 * 60_000 });
+  } catch {
+    return tracks; // no server (static hosting) or feed unavailable
+  }
+  const known = new Set(tracks.map((t) => t.permalink));
+  const extra: Track[] = [];
+  for (const it of feed.items) {
+    const permalink = normalizeScUrl(it.link);
+    podcastStreams.set(permalink, it.mp3);
+    if (known.has(permalink)) continue;
+    extra.push({
+      id: `soundcloud:url:${permalink}`,
+      source: 'soundcloud',
+      sourceId: `url:${permalink}`,
+      title: it.title,
+      artist: feed.author || tracks[0]?.artist || 'SoundCloud',
+      artistId: tracks[0]?.artistId,
+      artwork: it.image,
+      artworkLarge: it.image,
+      duration: it.duration,
+      permalink,
+      playability: 'full',
+      releaseDate: it.published ? new Date(it.published).toISOString() : undefined,
+    });
+  }
+  return [...tracks, ...extra];
 }
 
 export const soundcloudSearchUrl = (q: string) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}`;

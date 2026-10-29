@@ -75,8 +75,8 @@ export function Sidebar() {
     <aside className="fixed top-[calc(12px+var(--safe-t))] bottom-[100px] left-3 z-30 hidden w-[248px] flex-col md:flex" aria-label="Боковая панель">
       <div className="glass flex h-full flex-col overflow-hidden rounded-[26px]">
         <Link to="/" className="flex items-center gap-2.5 px-5 pt-5 pb-4">
-          <img src="/icon.svg" alt="" className="size-8" />
-          <span className="text-xl font-extrabold tracking-[0.18em]">AURA</span>
+          <img src="/icon.svg" alt="" className="size-6" />
+          <span className="text-[15px] font-semibold tracking-[0.32em]">AURA</span>
         </Link>
         <nav className="space-y-0.5 px-3" aria-label="Основная навигация">
           {[...TABS, { to: '/premium', label: premium ? 'Premium ✓' : 'Premium', icon: Crown }, { to: '/settings', label: 'Настройки', icon: Settings }].map(({ to, label, icon: Icon }) => {
@@ -154,7 +154,6 @@ export function Sidebar() {
               </div>
             </NavLink>
           ))}
-          {playlists.length > 0 && <p className="px-2 pt-2 text-[11px] text-fg-3">Перетащите трек на плейлист, чтобы добавить его.</p>}
         </div>
         <Link to="/profile" className="flex items-center gap-3 border-t border-line px-4 py-3 hover:bg-surface-hover">
           <Artwork src={profile.avatar} alt="" seed={profile.displayName} className="size-8" rounded="rounded-full" />

@@ -242,7 +242,7 @@ function loadWidgetApi(): Promise<SCGlobal> {
 }
 
 const widgetSrc = (url: string, autoplay: boolean) =>
-  `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=${autoplay}&visual=false&show_artwork=false&buying=false&sharing=false&download=false&show_comments=false&single_active=true`;
+  `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=${autoplay}&visual=false&show_artwork=false&buying=false&sharing=false&download=false&show_comments=false&single_active=true&color=%23d4d4d8`;
 
 export class SoundCloudWidgetEngine implements Engine {
   private iframe: HTMLIFrameElement | null = null;
@@ -262,7 +262,7 @@ export class SoundCloudWidgetEngine implements Engine {
 
     const ready = () =>
       new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('SoundCloud не ответил — трек мог быть удалён или закрыт')), 15000);
+        const timer = setTimeout(() => reject(new Error('SoundCloud не отдал трек — он удалён, приватный или закрыт для встраивания')), 15000);
         const onReady = () => {
           clearTimeout(timer);
           this.widget!.getDuration((ms) => {
@@ -289,14 +289,14 @@ export class SoundCloudWidgetEngine implements Engine {
           w.bind(E.PLAY, () => this.ev.playing());
           w.bind(E.PAUSE, () => this.ev.paused());
           w.bind(E.FINISH, () => this.ev.ended());
-          w.bind(E.ERROR, () => this.ev.error('SoundCloud не может воспроизвести этот трек'));
+          w.bind(E.ERROR, () => this.ev.error('SoundCloud не разрешает играть этот трек вне своего сайта (Go+, запрет автора или ограничение по стране)'));
           w.bind(E.PLAY_PROGRESS, (e) => {
             if (!e) return;
             if (!this.duration && e.relativePosition > 0) this.duration = e.currentPosition / e.relativePosition / 1000;
             this.ev.time(e.currentPosition / 1000, this.duration);
           });
         } else {
-          this.widget!.load(url, { auto_play: autoplay, visual: false, show_artwork: false, callback: onReady });
+          this.widget!.load(url, { auto_play: autoplay, visual: false, show_artwork: false, color: '#d4d4d8', callback: onReady });
         }
       });
     await ready();
@@ -318,6 +318,110 @@ export class SoundCloudWidgetEngine implements Engine {
   stop() {
     this.loadToken++;
     this.widget?.pause();
+  }
+  setActive(active: boolean) {
+    this.active = active;
+    this.iframe?.classList.toggle('active', active);
+  }
+}
+
+// ─────────────────────── Mixcloud Widget API ───────────────────────
+// https://www.mixcloud.com/developers/widget/
+
+interface MCWidget {
+  ready: Promise<void>;
+  play(): Promise<void>;
+  pause(): Promise<void>;
+  seek(sec: number): Promise<boolean>;
+  setVolume?(v: number): Promise<void>;
+  getDuration(): Promise<number>;
+  events: Record<'progress' | 'play' | 'pause' | 'ended' | 'error' | 'buffering', { on(fn: (...a: number[]) => void): void }>;
+}
+interface MCGlobal {
+  PlayerWidget(el: HTMLIFrameElement): MCWidget;
+}
+
+let mcApi: Promise<MCGlobal> | null = null;
+function loadMixcloudApi(): Promise<MCGlobal> {
+  mcApi ??= new Promise((resolve, reject) => {
+    const w = window as unknown as { Mixcloud?: MCGlobal };
+    if (w.Mixcloud) return resolve(w.Mixcloud);
+    const s = document.createElement('script');
+    s.src = 'https://widget.mixcloud.com/media/js/widgetApi.js';
+    s.async = true;
+    s.onload = () => (w.Mixcloud ? resolve(w.Mixcloud) : reject(new Error('Mixcloud недоступен')));
+    s.onerror = () => {
+      mcApi = null;
+      reject(new Error('Не удалось загрузить плеер Mixcloud'));
+    };
+    document.head.appendChild(s);
+  });
+  return mcApi;
+}
+
+export class MixcloudWidgetEngine implements Engine {
+  private iframe: HTMLIFrameElement | null = null;
+  private widget: MCWidget | null = null;
+  private volume = 1;
+  private token = 0;
+  private active = false;
+  private duration = 0;
+
+  constructor(private ev: EngineEvents) {}
+
+  /** `url` is the cloudcast key, e.g. "/user/show-name/". */
+  async load(key: string, { autoplay, startAt }: { autoplay: boolean; startAt?: number }) {
+    const token = ++this.token;
+    const MC = await loadMixcloudApi();
+    if (token !== this.token) return;
+    // A fresh iframe per show is the most reliable way to switch shows.
+    this.iframe?.remove();
+    const f = (this.iframe = document.createElement('iframe'));
+    f.className = this.active ? 'mc-dock active' : 'mc-dock';
+    f.allow = 'autoplay; encrypted-media';
+    f.title = 'Mixcloud player';
+    f.src = `https://player-widget.mixcloud.com/widget/iframe/?${new URLSearchParams({
+      feed: key,
+      hide_cover: '1',
+      mini: '1',
+      hide_artwork: '1',
+      autoplay: autoplay ? '1' : '0',
+    })}`;
+    document.body.appendChild(f);
+    const w = (this.widget = MC.PlayerWidget(f));
+    const ok = await Promise.race([w.ready.then(() => true), new Promise<false>((r) => setTimeout(() => r(false), 15000))]);
+    if (token !== this.token) return;
+    if (!ok) throw new Error('Mixcloud не ответил — шоу удалено или недоступно в вашем регионе');
+    const mine = () => token === this.token;
+    w.events.progress.on((pos, dur) => mine() && this.ev.time(pos, (this.duration = dur || this.duration)));
+    w.events.play.on(() => mine() && this.ev.playing());
+    w.events.pause.on(() => mine() && this.ev.paused());
+    w.events.buffering.on(() => mine() && this.ev.waiting());
+    w.events.ended.on(() => mine() && this.ev.ended());
+    w.events.error.on(() => mine() && this.ev.error('Mixcloud не может воспроизвести это шоу здесь'));
+    this.duration = await w.getDuration().catch(() => 0);
+    this.ev.time(0, this.duration);
+    await w.setVolume?.(this.volume).catch(() => {});
+    if (startAt) await w.seek(startAt).catch(() => false);
+    if (autoplay) await w.play().catch(() => {});
+  }
+  async play() {
+    await this.widget?.play().catch(() => {});
+  }
+  pause() {
+    void this.widget?.pause().catch(() => {});
+  }
+  seek(sec: number) {
+    // Mixcloud may refuse some seeks for licensing reasons; it then just keeps playing.
+    void this.widget?.seek(Math.max(0, sec)).catch(() => false);
+  }
+  setVolume(v: number) {
+    this.volume = v;
+    void this.widget?.setVolume?.(v).catch(() => {});
+  }
+  stop() {
+    this.token++;
+    void this.widget?.pause().catch(() => {});
   }
   setActive(active: boolean) {
     this.active = active;
