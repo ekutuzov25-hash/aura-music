@@ -1,0 +1,91 @@
+{
+  "name": "aura",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c magenta,cyan \"tsx watch --include .env server/index.ts\" \"vite\"",
+    "dev:web": "vite",
+    "dev:api": "tsx watch --include .env server/index.ts",
+    "build": "tsc -b && vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "typecheck": "tsc -b",
+    "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --outdir=dist-electron --out-extension:.js=.cjs",
+    "desktop": "npm run build && npm run build:electron && electron .",
+    "dist:mac": "npm run build && npm run build:electron && electron-builder --mac",
+    "dist:win": "npm run build && npm run build:electron && electron-builder --win"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.47.10",
+    "@tailwindcss/vite": "4.1.11",
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@vitejs/plugin-react": "4.3.4",
+    "concurrently": "9.1.2",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "esbuild": "0.24.2",
+    "hls.js": "1.5.17",
+    "idb-keyval": "6.2.1",
+    "lucide-react": "0.468.0",
+    "motion": "11.15.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.28.1",
+    "tailwindcss": "4.1.11",
+    "tsx": "4.19.2",
+    "typescript": "5.7.2",
+    "vite": "6.0.7",
+    "zustand": "5.0.2"
+  },
+  "description": "AURA — музыкальное приложение",
+  "author": "AURA",
+  "main": "dist-electron/main.cjs",
+  "build": {
+    "appId": "app.aura.music",
+    "productName": "AURA",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.music",
+      "icon": "build/icon.png"
+    },
+    "dmg": {
+      "title": "AURA"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "AURA"
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+  }
+}
