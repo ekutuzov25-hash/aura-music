@@ -30,6 +30,7 @@ const events = (owner: () => Engine): EngineEvents => ({
   playing() {
     if (engine !== owner()) return;
     consecutiveErrors = 0;
+    prefetchUpcoming();
     S.setState({ status: 'playing', error: undefined });
     P.setState({ buffering: false });
     if (navigator.mediaSession) navigator.mediaSession.playbackState = 'playing';
@@ -61,6 +62,22 @@ const events = (owner: () => Engine): EngineEvents => ({
 const audio: HtmlAudioEngine = new HtmlAudioEngine(events((): Engine => audio));
 const widget: SoundCloudWidgetEngine = new SoundCloudWidgetEngine(events((): Engine => widget));
 engine = audio;
+
+/** Get the next two tracks ready while this one plays, so skipping is near-instant. */
+function prefetchUpcoming() {
+  const { queue, index, repeat } = S.getState();
+  const upcoming = queue.slice(index + 1, index + 3).filter((t) => t.playability === 'full' || t.playability === 'preview');
+  upcoming.forEach((t, i) =>
+    Promise.resolve(getProvider(t.source).prefetch?.(t))
+      .then(async () => {
+        // buffer the very next track in the standby element
+        if (i !== 0 || repeat === 'one') return;
+        const s = await getProvider(t.source).resolveStream(t);
+        if (s.kind === 'audio' && !s.hls && S.getState().queue[S.getState().index + 1]?.id === t.id) audio.preload(s.url, t.id);
+      })
+      .catch(() => {}),
+  );
+}
 
 const current = (): Track | undefined => {
   const s = S.getState();
@@ -108,7 +125,13 @@ async function loadCurrent(autoplay: boolean, startAt?: number) {
     const vol = S.getState().muted ? 0 : S.getState().volume;
     engine.setVolume(vol);
     S.setState({ mode: stream.kind, isPreview: stream.kind === 'audio' && !!stream.preview });
-    await engine.load(stream.url, { autoplay, hls: stream.kind === 'audio' && stream.hls, startAt });
+    await engine.load(stream.url, {
+      autoplay,
+      hls: stream.kind === 'audio' && stream.hls,
+      startAt,
+      fallbacks: stream.kind === 'audio' ? stream.fallbacks : undefined,
+      key: t.id,
+    });
     if (seq !== loadSeq) return;
     if (autoplay) {
       useLibrary.getState().recordPlay(t);
@@ -123,7 +146,7 @@ async function loadCurrent(autoplay: boolean, startAt?: number) {
 // ─────────── Media Session: lock screen, notification, media keys ───────────
 function updateMediaSession(t: Track) {
   if (!('mediaSession' in navigator)) return;
-  const art = t.artworkLarge ?? t.artwork;
+  const art = t.artworkXL ?? t.artworkLarge ?? t.artwork;
   navigator.mediaSession.metadata = new MediaMetadata({
     title: t.title,
     artist: t.artist,

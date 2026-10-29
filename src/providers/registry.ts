@@ -44,6 +44,11 @@ export async function searchAll(query: string, sources: SourceId[], signal?: Abo
   );
 }
 
+/** Start resolving a track's stream when the user is about to play it (hover / touch). */
+export function warmTrack(t: { source: SourceId; playability: string } & Parameters<NonNullable<MusicProvider['prefetch']>>[0]) {
+  if (t.playability === 'full' || t.playability === 'preview') void getProvider(t.source).prefetch?.(t);
+}
+
 /** Splits a "source:id" global id. Source ids may themselves contain colons (URNs). */
 export function splitId(id: string): { source: SourceId; sourceId: string } {
   const i = id.indexOf(':');

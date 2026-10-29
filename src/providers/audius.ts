@@ -21,6 +21,7 @@ interface ATrack {
   artwork?: Sizes; user: AUser; permalink?: string; release_date?: string; created_at?: string;
   play_count?: number; favorite_count?: number; bpm?: number | null; is_streamable?: boolean; is_delete?: boolean;
   is_stream_gated?: boolean; access?: { stream?: boolean };
+  stream?: { url?: string; mirrors?: string[] } | null;
 }
 interface APlaylist {
   id: string; playlist_name: string; description?: string; is_album: boolean; artwork?: Sizes;
@@ -30,10 +31,112 @@ interface APlaylist {
 const api = <T,>(path: string, params: Record<string, string | number | undefined> = {}, signal?: AbortSignal) =>
   getJSON<{ data: T }>(`${HOST}/v1/${path}?${qs({ ...params, app_name: APP })}`, { signal }).then((r) => r.data);
 
-const pic = (s: Sizes, size: string) => (s ? s[size] ?? Object.values(s).find((v) => typeof v === 'string') : undefined);
+// ───────────── fast streaming ─────────────
+// /v1/tracks/{id}/stream goes API → content node → storage (~3 s of redirects).
+// Track metadata already carries a signed content-node URL (~1.2 s), and once
+// resolved, the final storage URL starts in ~0.7 s. We remember both and
+// resolve upcoming tracks ahead of time. Signed URLs are kept in memory only.
+const STREAM_TTL = 20 * 60_000;
+const metaStream = new Map<string, { urls: string[]; at: number }>();
+const finalStream = new Map<string, { url: string; at: number }>();
+const preconnected = new Set<string>();
+
+function rememberStream(t: ATrack) {
+  const u = t.stream?.url;
+  if (!u) return;
+  // mirrors are other nodes holding the same file: same path, different host
+  const path = u.replace(/^https?:\/\/[^/]+/, '');
+  const mirrors = (t.stream?.mirrors ?? []).map((m) => m.replace(/\/$/, '') + path);
+  metaStream.set(t.id, { urls: [u, ...mirrors], at: Date.now() });
+}
+
+function preconnect(url: string) {
+  try {
+    const origin = new URL(url).origin;
+    if (preconnected.has(origin)) return;
+    preconnected.add(origin);
+    const l = document.createElement('link');
+    l.rel = 'preconnect';
+    l.href = origin;
+    l.crossOrigin = 'anonymous';
+    document.head.appendChild(l);
+  } catch {
+    /* bad url */
+  }
+}
+
+const apiStreamUrl = (id: string) => `${HOST}/v1/tracks/${id}/stream?${qs({ app_name: APP })}`;
+
+function candidates(id: string): string[] {
+  const fresh = <T extends { at: number }>(x?: T) => (x && Date.now() - x.at < STREAM_TTL ? x : undefined);
+  const fin = fresh(finalStream.get(id))?.url;
+  const meta = fresh(metaStream.get(id))?.urls ?? [];
+  return [...new Set([fin, ...meta.slice(0, 2), apiStreamUrl(id)].filter((u): u is string => !!u))];
+}
+
+const resolving = new Map<string, Promise<void>>();
+async function resolveFinal(id: string) {
+  if (finalStream.has(id) && Date.now() - finalStream.get(id)!.at < STREAM_TTL) return;
+  if (resolving.has(id)) return resolving.get(id);
+  const job = (async () => {
+    const start = candidates(id)[0];
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      // A 1-byte range request follows every redirect and leaves the connection warm.
+      const res = await fetch(start, { headers: { Range: 'bytes=0-0' }, signal: ctrl.signal, cache: 'no-store' });
+      if (res.ok && res.url) {
+        finalStream.set(id, { url: res.url, at: Date.now() });
+        preconnect(res.url);
+      }
+      void res.body?.cancel();
+    } catch {
+      /* best effort: playback falls back to the other URLs */
+    } finally {
+      clearTimeout(timer);
+      resolving.delete(id);
+    }
+  })();
+  resolving.set(id, job);
+  return job;
+}
+
+// Content nodes are community-run and some are often overloaded. Each image
+// comes with mirror hosts holding the same file; remember them so <Artwork>
+// can silently switch to a mirror when a node fails.
+const imageMirrors = new Map<string, string[]>();
+function rememberMirrors(s: Sizes) {
+  const mirrors = (s as { mirrors?: string[] } | null | undefined)?.mirrors;
+  if (!s || !mirrors?.length) return;
+  for (const [k, v] of Object.entries(s)) {
+    if (k === 'mirrors' || typeof v !== 'string') continue;
+    const path = v.replace(/^https?:\/\/[^/]+/, '');
+    imageMirrors.set(v, mirrors.map((m) => m.replace(/\/$/, '') + path));
+  }
+}
+/** Alternative URLs for an Audius image (empty for other sources). */
+export function audiusImageFallbacks(url: string): string[] {
+  const known = imageMirrors.get(url);
+  if (known) return known;
+  // Saved tracks from an earlier session: try hosts that served mirrors this session.
+  const m = url.match(/^https?:\/\/([^/]+)(\/content\/.+)$/);
+  if (!m) return [];
+  const hosts = new Map<string, number>();
+  for (const list of imageMirrors.values()) for (const u of list) {
+    const h = u.match(/^https?:\/\/([^/]+)/)?.[1];
+    if (h && h !== m[1]) hosts.set(h, (hosts.get(h) ?? 0) + 1);
+  }
+  return [...hosts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h]) => `https://${h}${m[2]}`);
+}
+
+const pic = (s: Sizes, size: string) => {
+  rememberMirrors(s);
+  return s ? s[size] ?? Object.values(s).find((v) => typeof v === 'string') : undefined;
+};
 const web = (path?: string) => (path ? `https://audius.co${path}` : undefined);
 
 export function mapTrack(t: ATrack): Track {
+  rememberStream(t);
   const gated = t.is_stream_gated || t.access?.stream === false;
   return {
     id: `audius:${t.id}`,
@@ -43,7 +146,8 @@ export function mapTrack(t: ATrack): Track {
     artist: t.user?.name ?? 'Unknown',
     artistId: t.user ? `audius:${t.user.id}` : undefined,
     artwork: pic(t.artwork, '150x150'),
-    artworkLarge: pic(t.artwork, '1000x1000') ?? pic(t.artwork, '480x480'),
+    artworkLarge: pic(t.artwork, '480x480') ?? pic(t.artwork, '1000x1000'),
+    artworkXL: pic(t.artwork, '1000x1000') ?? pic(t.artwork, '480x480'),
     duration: t.duration ?? 0,
     genre: t.genre || undefined,
     tags: t.tags ? t.tags.split(',').map((x) => x.trim()).filter(Boolean) : undefined,
@@ -108,10 +212,12 @@ export const audius: MusicProvider = {
     return { tracks: tracks.map(mapTrack), artists: users.map(mapArtist), collections };
   },
   async resolveStream(track) {
-    // Audius redirects /stream to a signed content-node URL with CORS enabled,
-    // so the analyser/visualizer can read the audio.
-    return { kind: 'audio', url: `${HOST}/v1/tracks/${track.sourceId}/stream?${qs({ app_name: APP })}`, corsSafe: true };
+    // All hops send CORS headers, so the analyser/visualizer can read the audio.
+    const [url, ...fallbacks] = candidates(track.sourceId);
+    if (!finalStream.has(track.sourceId)) void resolveFinal(track.sourceId); // speeds up replays
+    return { kind: 'audio', url, fallbacks, corsSafe: true };
   },
+  prefetch: (track) => resolveFinal(track.sourceId),
   async trending(opts = {}) {
     const data = await api<ATrack[]>('tracks/trending', { genre: opts.genre, time: opts.time ?? 'week', limit: 30 });
     return data.map(mapTrack);

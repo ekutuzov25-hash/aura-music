@@ -1,4 +1,5 @@
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, useInView, useReducedMotion } from 'motion/react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, Pause, Play, RotateCcw, ThumbsDown } from 'lucide-react';
 import { player } from '../player/controller';
 import { usePlayerState } from '../player/store';
@@ -13,7 +14,16 @@ import { Chip, IconButton, Pressable, spring } from './ui/primitives';
  * transforms on GPU layers; static when reduced motion is on.
  */
 export function AuraOrb({ active, size = 220, className }: { active: boolean; size?: number; className?: string }) {
-  const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  // animate only while visible on screen and the window is in the foreground
+  const inView = useInView(ref, { margin: '100px' });
+  const [hidden, setHidden] = useState(document.hidden);
+  useEffect(() => {
+    const on = () => setHidden(document.hidden);
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, []);
+  const reduce = useReducedMotion() || !inView || hidden;
   const blobs = [
     { c: 'rgb(var(--dyn))', x: -0.18, y: -0.12, s: 0.78, d: 14 },
     { c: 'rgb(255 255 255)', x: 0.2, y: -0.06, s: 0.62, d: 17 },
@@ -21,11 +31,11 @@ export function AuraOrb({ active, size = 220, className }: { active: boolean; si
     { c: 'rgb(228 228 231)', x: 0.08, y: 0.02, s: 0.5, d: 11 },
   ];
   return (
-    <div className={cn('relative shrink-0', className)} style={{ width: size, height: size }} aria-hidden>
+    <div ref={ref} className={cn('relative shrink-0', className)} style={{ width: size, height: size }} aria-hidden>
       {blobs.map((b, i) => (
         <motion.span
           key={i}
-          className="absolute top-1/2 left-1/2 rounded-full mix-blend-screen blur-2xl [.lite_&]:blur-xl"
+          className="absolute top-1/2 left-1/2 rounded-full mix-blend-screen blur-2xl will-change-transform [.lite_&]:blur-xl"
           style={{ width: size * b.s, height: size * b.s, background: b.c, opacity: 0.75, marginLeft: (-size * b.s) / 2, marginTop: (-size * b.s) / 2 }}
           animate={
             reduce
@@ -40,9 +50,9 @@ export function AuraOrb({ active, size = 220, className }: { active: boolean; si
         />
       ))}
       <motion.span
-        className="absolute inset-[22%] rounded-full bg-white/80 blur-xl mix-blend-overlay"
-        animate={reduce ? {} : { scale: active ? [1, 1.15, 1] : [1, 1.04, 1], opacity: active ? [0.5, 0.8, 0.5] : 0.4 }}
-        transition={{ duration: active ? 1.6 : 4, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute inset-[22%] rounded-full bg-white/80 blur-xl mix-blend-overlay will-change-transform"
+        animate={reduce ? { scale: 1, opacity: 0.5 } : { scale: active ? [1, 1.15, 1] : [1, 1.04, 1], opacity: active ? [0.5, 0.8, 0.5] : 0.4 }}
+        transition={reduce ? { duration: 0.3 } : { duration: active ? 1.6 : 4, repeat: Infinity, ease: 'easeInOut' }}
       />
     </div>
   );

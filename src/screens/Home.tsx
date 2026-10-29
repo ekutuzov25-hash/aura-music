@@ -18,6 +18,18 @@ import { Artwork, Button, ErrorState, IconButton, Pressable, SectionHeader, soft
 import { Onboarding } from './Onboarding';
 import { AuraHero } from '../components/AuraHero';
 
+// Stable objects so memoised cards don't re-render on every Home update.
+const CTX = {
+  recent: { label: 'Недавно прослушанное', path: '/library?tab=recent' },
+  forYou: { label: 'Для вас' },
+  rotation: { label: 'Ваша ротация' },
+  trending: { label: 'В тренде · Audius' },
+  underground: { label: 'Андеграунд' },
+  newReleases: { label: 'Новые релизы' },
+};
+const loadTrending = () => audius.trending!({ time: 'week' });
+const loadUnderground = () => audius.underground!();
+
 function TrackShelf({ title, subtitle, loader, deps, context }: { title: string; subtitle?: string; loader: () => Promise<import('../providers/types').Track[]>; deps: unknown[]; context: { label: string } }) {
   const { data, error, loading, reload } = useAsync(loader, deps);
   if (!loading && !error && !data?.length) return null;
@@ -75,10 +87,11 @@ export default function Home() {
 
   const taste = useMemo(() => buildTaste({ likes, history, playCounts, playlists, artists, preferences }), [likes.length, history.length, playlists.length, artists.length, preferences]); // eslint-disable-line react-hooks/exhaustive-deps
   const tasteKey = taste.genres.slice(0, 3).map((g) => g[0]).join() + '|' + taste.artists.slice(0, 2).map((a) => a[0]).join();
-  const recent = history.slice(0, 20).map((h) => h.track);
+  const recent = useMemo(() => history.slice(0, 20).map((h) => h.track), [history]);
   const rot = useMemo(() => rotation({ history, likes, playCounts }), [history, likes, playCounts]);
 
   const recs = useAsync(() => (taste.hasData ? madeForYou(taste, { likes, history }) : Promise.resolve([])), [tasteKey]);
+  const recTracks = useMemo(() => recs.data?.map((x) => x.track) ?? [], [recs.data]);
   const mixes = useAsync(() => (premium && taste.hasData ? dailyMixes(taste, { likes, history }) : Promise.resolve([])), [tasteKey, premium]);
   const trendingPl = useAsync(() => audius.trendingCollections!(), []);
   const scApi = useAsync(() => soundcloudApiReady(), []);
@@ -114,7 +127,7 @@ export default function Home() {
       {recent.length > 0 && (
         <section className="mt-8">
           <SectionHeader title="Недавно прослушанное" action={<Link to="/library?tab=recent" className="text-sm font-semibold text-fg-2 hover:text-fg">Все</Link>} />
-          <Shelf>{recent.map((t, i) => <TrackCard key={t.id} track={t} list={recent} index={i} context={{ label: 'Недавно прослушанное', path: '/library?tab=recent' }} />)}</Shelf>
+          <Shelf>{recent.map((t, i) => <TrackCard key={t.id} track={t} list={recent} index={i} context={CTX.recent} />)}</Shelf>
         </section>
       )}
 
@@ -122,7 +135,7 @@ export default function Home() {
         <section className="mt-9">
           <SectionHeader title="Для вас" subtitle={`На основе: ${taste.genres.slice(0, 3).map((g) => g[0]).concat(taste.artists.slice(0, 2).map((a) => a[0])).join(', ')}`} action={<button onClick={() => setOnboarding(true)} className="text-sm font-semibold text-fg-2 hover:text-fg">Настроить</button>} />
           {recs.error ? <ErrorState message={recs.error} onRetry={recs.reload} /> : recs.loading && !recs.data ? <ShelfSkeleton /> : recs.data!.length ? (
-            <Shelf>{recs.data!.map((r, i, arr) => <TrackCard key={r.track.id} track={r.track} subtitle={r.reason} list={arr.map((x) => x.track)} index={i} context={{ label: 'Для вас' }} />)}</Shelf>
+            <Shelf>{recs.data!.map((r, i) => <TrackCard key={r.track.id} track={r.track} subtitle={r.reason} list={recTracks} index={i} context={CTX.forYou} />)}</Shelf>
           ) : <p className="px-4 text-sm text-fg-2 md:px-8">Пока не нашли новых треков по вашим предпочтениям.</p>}
         </section>
       )}
@@ -130,7 +143,7 @@ export default function Home() {
       {rot.length > 0 && (
         <section className="mt-9">
           <SectionHeader title="Ваша ротация" subtitle="Чаще всего слушаете" />
-          <Shelf>{rot.map((t, i) => <TrackCard key={t.id} track={t} list={rot} index={i} context={{ label: 'Ваша ротация' }} subtitle={`${playCounts[t.id]} прослушиваний`} />)}</Shelf>
+          <Shelf>{rot.map((t, i) => <TrackCard key={t.id} track={t} list={rot} index={i} context={CTX.rotation} subtitle={`${playCounts[t.id]} прослушиваний`} />)}</Shelf>
         </section>
       )}
 
@@ -188,9 +201,9 @@ export default function Home() {
         )}
       </section>
 
-      <TrackShelf title="В тренде" subtitle="Audius · топ недели" loader={() => audius.trending!({ time: 'week' })} deps={[]} context={{ label: 'В тренде · Audius' }} />
-      <TrackShelf title="Андеграунд-открытия" subtitle="Набирающие популярность независимые артисты" loader={() => audius.underground!()} deps={[]} context={{ label: 'Андеграунд' }} />
-      <TrackShelf title="Новые релизы" subtitle="Вышли за последние недели и уже в тренде" loader={newReleases} deps={[]} context={{ label: 'Новые релизы' }} />
+      <TrackShelf title="В тренде" subtitle="Audius · топ недели" loader={loadTrending} deps={[]} context={CTX.trending} />
+      <TrackShelf title="Андеграунд-открытия" subtitle="Набирающие популярность независимые артисты" loader={loadUnderground} deps={[]} context={CTX.underground} />
+      <TrackShelf title="Новые релизы" subtitle="Вышли за последние недели и уже в тренде" loader={newReleases} deps={[]} context={CTX.newReleases} />
 
       {(trendingPl.loading || !!trendingPl.data?.length) && (
         <section className="mt-9">

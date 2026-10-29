@@ -109,7 +109,7 @@ export function NowPlaying() {
               >
                 <motion.div className="size-full" animate={{ scale: playing || reduce ? 1 : 0.88 }} transition={softSpring}>
                   <Artwork
-                    src={t.artworkLarge ?? t.artwork}
+                    src={t.artworkXL ?? t.artworkLarge ?? t.artwork}
                     alt={`Обложка: ${t.title}`}
                     seed={t.id}
                     className="size-full shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)]"

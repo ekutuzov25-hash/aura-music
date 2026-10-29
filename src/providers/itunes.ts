@@ -30,7 +30,8 @@ const mapTrack = (s: ISong): Track => ({
   album: s.collectionName,
   albumId: s.collectionId ? `itunes:${s.collectionId}` : undefined,
   artwork: art(s.artworkUrl100, 200),
-  artworkLarge: art(s.artworkUrl100, 1000),
+  artworkLarge: art(s.artworkUrl100, 480),
+  artworkXL: art(s.artworkUrl100, 1000),
   // The playable part is the preview; keep full length for display in the card.
   duration: s.previewUrl ? 30 : Math.round((s.trackTimeMillis ?? 0) / 1000),
   genre: s.primaryGenreName,

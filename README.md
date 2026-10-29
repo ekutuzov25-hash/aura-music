@@ -24,9 +24,9 @@ npm run dev
 
 | Система | Файл |
 |---|---|
-| Mac с Apple Silicon (M1–M4) | `AURA-0.1.1-mac-arm64.dmg` |
-| Mac с Intel | `AURA-0.1.1-mac-x64.dmg` |
-| Windows 10/11 (64-бит) | `AURA-0.1.1-win-x64.exe` (установщик) |
+| Mac с Apple Silicon (M1–M4) | `AURA-0.1.2-mac-arm64.dmg` |
+| Mac с Intel | `AURA-0.1.2-mac-x64.dmg` |
+| Windows 10/11 (64-бит) | `AURA-0.1.2-win-x64.exe` (установщик) |
 
 **Первый запуск.** Приложение не подписано сертификатом разработчика Apple или Microsoft, поэтому система предупредит:
 - **macOS:** откройте `.dmg`, перетащите AURA в «Программы». При первом запуске нажмите на значке правой кнопкой → «Открыть» → «Открыть». Если macOS пишет «повреждено», выполните `xattr -cr /Applications/AURA.app`.

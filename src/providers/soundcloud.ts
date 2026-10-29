@@ -45,6 +45,7 @@ export function soundcloudApiReady(): Promise<boolean> {
 }
 
 const big = (url?: string | null) => (url ? url.replace('-large.', '-t500x500.') : undefined);
+const mid = (url?: string | null) => (url ? url.replace('-large.', '-t300x300.') : undefined);
 // Keys are strings so URNs ("soundcloud:tracks:123") and numeric ids both work.
 const key = (x: { id: number; urn?: string }) => String(x.urn ?? x.id);
 
@@ -59,7 +60,8 @@ function mapTrack(t: SCTrack): Track {
     artist: t.user?.username ?? 'Unknown',
     artistId: t.user ? `soundcloud:${key(t.user)}` : undefined,
     artwork: t.artwork_url ?? t.user?.avatar_url ?? undefined,
-    artworkLarge: big(t.artwork_url ?? t.user?.avatar_url),
+    artworkLarge: mid(t.artwork_url ?? t.user?.avatar_url),
+    artworkXL: big(t.artwork_url ?? t.user?.avatar_url),
     duration: Math.round((t.duration ?? 0) / 1000),
     genre: t.genre || undefined,
     tags: t.tag_list ? t.tag_list.match(/"[^"]+"|\S+/g)?.map((x) => x.replace(/"/g, '')) : undefined,
@@ -130,7 +132,8 @@ export async function trackFromSoundCloudUrl(url: string): Promise<Track> {
     artist: o.author_name,
     artistId: o.author_url ? `soundcloud:url:${normalizeScUrl(o.author_url)}` : undefined,
     artwork: o.thumbnail_url,
-    artworkLarge: big(o.thumbnail_url),
+    artworkLarge: mid(o.thumbnail_url),
+    artworkXL: big(o.thumbnail_url),
     duration: 0, // learned from the widget once it loads
     permalink: url,
     playability: 'full',

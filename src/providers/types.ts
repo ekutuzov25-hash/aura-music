@@ -25,7 +25,10 @@ export interface Track {
   album?: string;
   albumId?: string;
   artwork?: string;
+  /** ~480 px — cards and lists */
   artworkLarge?: string;
+  /** ~1000 px — full-screen player and lock screen */
+  artworkXL?: string;
   /** seconds */
   duration: number;
   genre?: string;
@@ -78,7 +81,7 @@ export interface SearchResults {
 }
 
 export type StreamInfo =
-  | { kind: 'audio'; url: string; hls?: boolean; preview?: boolean; corsSafe: boolean }
+  | { kind: 'audio'; url: string; hls?: boolean; preview?: boolean; corsSafe: boolean; /** tried in order if `url` fails */ fallbacks?: string[] }
   | { kind: 'sc-widget'; url: string };
 
 export interface ProviderStatus {
@@ -105,6 +108,8 @@ export interface MusicProvider {
   getCollection?(sourceId: string): Promise<Collection>;
   getTrack?(sourceId: string): Promise<Track>;
   related?(track: Track): Promise<Track[]>;
+  /** Warm up the stream of a track that will probably play next (resolve redirects, open connections). */
+  prefetch?(track: Track): Promise<void>;
 }
 
 export const emptyResults = (): SearchResults => ({ tracks: [], artists: [], collections: [] });

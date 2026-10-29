@@ -1,10 +1,12 @@
-import { memo, useState } from 'react';
+import { memo } from 'react';
+import { create } from 'zustand';
 import { useNavigate } from 'react-router-dom';
 import {
   Disc3, ExternalLink, Heart, Link2, ListEnd, ListPlus, ListStart, MoreHorizontal, Play, Radio, Trash2, UserRound,
 } from 'lucide-react';
 import { startTrackAura } from '../recommend/aura';
 import { soundcloudSearchUrl } from '../providers/scWidget';
+import { warmTrack } from '../providers/registry';
 import type { Track } from '../providers/types';
 import { player } from '../player/controller';
 import { usePlayerState, type PlayContext } from '../player/store';
@@ -19,19 +21,35 @@ export const collectionPath = (id: string) => `/collection/${encodeURIComponent(
 
 export const TRACK_DRAG_TYPE = 'application/x-aura-tracks';
 
+// ───────────── one shared track menu for the whole app ─────────────
+// Every row/card used to mount its own (hidden) menu; with hundreds of cards
+// that's a lot of idle components and store subscriptions. Now opening a menu
+// just writes to this tiny store and <TrackMenuHost/> renders it once.
+interface MenuState {
+  anchor: { x: number; y: number };
+  track: Track;
+  extra?: MenuItem[];
+}
+const useTrackMenuStore = create<{ menu: MenuState | null }>(() => ({ menu: null }));
+
+function openTrackMenu(e: React.MouseEvent, track: Track, extra?: MenuItem[]) {
+  e.preventDefault();
+  e.stopPropagation();
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const anchor = e.type === 'contextmenu' ? { x: e.clientX, y: e.clientY } : { x: r.right - 256, y: r.bottom + 6 };
+  useTrackMenuStore.setState({ menu: { anchor, track, extra } });
+}
+
 /** Shared track actions — used by rows, cards and the full player. */
 export function useTrackMenu() {
-  const navigate = useNavigate();
-  const [state, setState] = useState<{ anchor: { x: number; y: number }; track: Track; extra?: MenuItem[] } | null>(null);
-  const liked = useLibrary((s) => (state ? s.likes.some((l) => l.item.id === state.track.id) : false));
+  return { open: openTrackMenu, element: null };
+}
 
-  const open = (e: React.MouseEvent, track: Track, extra?: MenuItem[]) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const anchor = e.type === 'contextmenu' ? { x: e.clientX, y: e.clientY } : { x: r.right - 256, y: r.bottom + 6 };
-    setState({ anchor, track, extra });
-  };
+export function TrackMenuHost() {
+  const navigate = useNavigate();
+  const state = useTrackMenuStore((s) => s.menu);
+  const liked = useLibrary((s) => (state ? s.likes.some((l) => l.item.id === state.track.id) : false));
+  const close = () => useTrackMenuStore.setState({ menu: null });
 
   const t = state?.track;
   const items: MenuItem[] = t
@@ -64,10 +82,10 @@ export function useTrackMenu() {
       ]
     : [];
 
-  const element = (
+  return (
     <Menu
       anchor={state?.anchor ?? null}
-      onClose={() => setState(null)}
+      onClose={close}
       items={items}
       header={
         t && (
@@ -82,7 +100,6 @@ export function useTrackMenu() {
       }
     />
   );
-  return { open, element };
 }
 
 interface RowProps {
@@ -108,8 +125,9 @@ export const TrackRow = memo(function TrackRow({
   onRemove,
   className,
 }: RowProps) {
+  // Only the row of the playing track re-renders on play/pause.
   const isCurrent = usePlayerState((s) => s.queue[s.index]?.id === t.id);
-  const paused = usePlayerState((s) => s.status !== 'playing');
+  const paused = usePlayerState((s) => s.queue[s.index]?.id === t.id && s.status !== 'playing');
   const liked = useLibrary((s) => s.likes.some((l) => l.item.id === t.id));
   const blocked = t.playability === 'external' || t.playability === 'unavailable';
   const extra: MenuItem[] | undefined = onRemove ? [{ label: 'Удалить из плейлиста', icon: <Trash2 />, danger: true, onSelect: onRemove }] : undefined;
@@ -140,6 +158,8 @@ export const TrackRow = memo(function TrackRow({
         if (e.key === 'Enter') play();
       }}
       onContextMenu={(e) => onMenu(e, t, extra)}
+      onPointerEnter={() => warmTrack(t)}
+      onPointerDown={() => warmTrack(t)}
       className={cn(
         'group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover',
         blocked && 'opacity-55',

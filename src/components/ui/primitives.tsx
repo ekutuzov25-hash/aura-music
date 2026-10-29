@@ -1,7 +1,8 @@
 import { motion, type HTMLMotionProps } from 'motion/react';
-import { forwardRef, memo, useState, type ReactNode } from 'react';
+import { forwardRef, memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AlertCircle, Music2, RefreshCw } from 'lucide-react';
 import { SOURCE_META } from '../../providers/registry';
+import { audiusImageFallbacks } from '../../providers/audius';
 import type { SourceId } from '../../providers/types';
 import { cn, haptic, hashHue } from '../../lib/util';
 
@@ -100,6 +101,14 @@ export const Artwork = memo(function Artwork({
   eager?: boolean;
 }) {
   const [state, setState] = useState<'loading' | 'ok' | 'error'>(src ? 'loading' : 'error');
+  // overloaded image nodes: walk through mirrors before showing the placeholder
+  const [attempt, setAttempt] = useState(0);
+  const urls = useMemo(() => (src ? [src, ...audiusImageFallbacks(src)] : []), [src]);
+  useEffect(() => {
+    setAttempt(0);
+    setState(src ? 'loading' : 'error');
+  }, [src]);
+  const current = urls[attempt];
   const hue = hashHue(seed);
   return (
     <div
@@ -113,15 +122,16 @@ export const Artwork = memo(function Artwork({
       {state === 'error' && (
         <Music2 aria-hidden className="absolute top-1/2 left-1/2 size-1/3 -translate-x-1/2 -translate-y-1/2 text-white/45" />
       )}
-      {src && state !== 'error' && (
+      {current && state !== 'error' && (
         <img
-          src={src}
+          key={current}
+          src={current}
           alt={alt}
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"
           draggable={false}
           onLoad={() => setState('ok')}
-          onError={() => setState('error')}
+          onError={() => (attempt + 1 < urls.length ? setAttempt(attempt + 1) : setState('error'))}
           className={cn('size-full object-cover transition-opacity duration-500', state === 'ok' ? 'opacity-100' : 'opacity-0')}
         />
       )}

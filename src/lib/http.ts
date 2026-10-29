@@ -20,11 +20,18 @@ export async function getJSON<T>(
 
   const p = (async () => {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), opts.timeout ?? 12_000);
+    const timer = setTimeout(() => ctrl.abort(), opts.timeout ?? 15_000);
     opts.signal?.addEventListener('abort', () => ctrl.abort(), { once: true });
     let res: Response;
     try {
       res = await fetch(url, { signal: ctrl.signal });
+      // Overloaded nodes answer 429/502/503 now and then: retry twice with backoff.
+      for (const wait of [500, 1500]) {
+        if (![429, 502, 503, 504].includes(res.status) || ctrl.signal.aborted) break;
+        if (url.startsWith('/api/') && res.status === 503) break; // "not configured" is final
+        await new Promise((r) => setTimeout(r, wait));
+        res = await fetch(url, { signal: ctrl.signal });
+      }
     } catch (e) {
       if (opts.signal?.aborted) throw e;
       throw new ProviderError(

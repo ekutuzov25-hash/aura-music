@@ -54,6 +54,7 @@ function loadApi(): Promise<SCGlobal> {
 }
 
 const big = (u?: string | null) => (u ? u.replace('-large.', '-t500x500.') : undefined);
+const mid = (u?: string | null) => (u ? u.replace('-large.', '-t300x300.') : undefined);
 
 export const normalizeScUrl = (url: string) =>
   url
@@ -90,7 +91,8 @@ export function mapWidgetSound(s: WSound): Track | null {
     artist: s.user?.username ?? 'SoundCloud',
     artistId: userUrl ? `soundcloud:url:${userUrl}` : undefined,
     artwork: s.artwork_url ?? s.user?.avatar_url ?? undefined,
-    artworkLarge: big(s.artwork_url ?? s.user?.avatar_url),
+    artworkLarge: mid(s.artwork_url ?? s.user?.avatar_url),
+    artworkXL: big(s.artwork_url ?? s.user?.avatar_url),
     duration: Math.round((s.duration ?? 0) / 1000),
     genre: s.genre || undefined,
     tags: s.tag_list ? s.tag_list.match(/"[^"]+"|\S+/g)?.map((x) => x.replace(/"/g, '')) : undefined,

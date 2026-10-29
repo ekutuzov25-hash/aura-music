@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Track } from '../providers/types';
+import { batchedStorage } from '../lib/storage';
 
 export type Repeat = 'off' | 'all' | 'one';
 export type Status = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
@@ -49,6 +50,7 @@ export const usePlayerState = create<PlayerState>()(
     {
       name: 'aura-player',
       version: 1,
+      storage: batchedStorage(),
       // Restore the queue and settings, never "playing" (browsers block autoplay anyway).
       partialize: (s) => ({
         queue: s.queue.slice(0, 500),

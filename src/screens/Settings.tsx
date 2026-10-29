@@ -4,6 +4,8 @@ import { providers, SOURCE_META } from '../providers/registry';
 import type { ProviderStatus, SourceId } from '../providers/types';
 import { authConfigured } from '../auth/auth';
 import { useLibrary } from '../store/library';
+import { usePlayerState } from '../player/store';
+import { useAura } from '../recommend/aura';
 import { useSettings, type MotionPref, type ThemePref } from '../store/settings';
 import { toast, useUI } from '../store/ui';
 import { useAsync } from '../lib/useAsync';
@@ -121,9 +123,11 @@ export default function SettingsScreen() {
         text={`Будут удалены ${useLibrary.getState().playlists.length} плейлистов, лайки, история и настройки на этом устройстве. Данные в аккаунте Supabase (если вы вошли) останутся.`}
         confirmLabel="Сбросить данные"
         onConfirm={() => {
-          localStorage.removeItem('aura-library');
-          localStorage.removeItem('aura-settings');
-          localStorage.removeItem('aura-player');
+          // through each store, so pending batched writes are dropped too
+          useLibrary.persist.clearStorage();
+          useSettings.persist.clearStorage();
+          usePlayerState.persist.clearStorage();
+          useAura.persist.clearStorage();
           toast('Данные сброшены');
           setTimeout(() => location.reload(), 600);
         }}

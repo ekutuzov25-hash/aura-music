@@ -23,6 +23,7 @@ import { useLibrary } from '../store/library';
 import { toast } from '../store/ui';
 import { buildTaste, normalizeGenre } from './engine';
 import { shuffleArray } from '../lib/util';
+import { batchedStorage } from '../lib/storage';
 
 export type Character = 'favorite' | 'discover' | 'popular';
 export type Mood = 'any' | 'energetic' | 'calm' | 'sad';
@@ -78,7 +79,7 @@ export const useAura = create<AuraPrefs>()(
       dislike: (id) => set({ disliked: [...get().disliked.filter((x) => x !== id), id].slice(-500) }),
       reset: () => set({ artistAdj: {}, genreAdj: {}, disliked: [] }),
     }),
-    { name: 'aura-stream', version: 1 },
+    { name: 'aura-stream', version: 1, storage: batchedStorage() },
   ),
 );
 

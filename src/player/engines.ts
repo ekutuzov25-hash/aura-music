@@ -19,7 +19,7 @@ export interface EngineEvents {
 }
 
 export interface Engine {
-  load(url: string, opts: { autoplay: boolean; hls?: boolean; startAt?: number }): Promise<void>;
+  load(url: string, opts: { autoplay: boolean; hls?: boolean; startAt?: number; fallbacks?: string[]; key?: string }): Promise<void>;
   play(): Promise<void>;
   pause(): void;
   seek(sec: number): void;
@@ -30,27 +30,52 @@ export interface Engine {
 // ─────────────────────────── HTML5 audio ───────────────────────────
 
 export class HtmlAudioEngine implements Engine {
-  readonly el: HTMLAudioElement;
+  /**
+   * Two elements: `el` plays, `standby` quietly buffers the next track. When
+   * the next track starts we swap them, so playback begins almost instantly.
+   */
+  el: HTMLAudioElement;
+  private standby: HTMLAudioElement;
+  /** which track the standby element holds (track id, not URL — URLs change as redirects resolve) */
+  private standbyKey = '';
   private hls: Hls | null = null;
   private ctx: AudioContext | null = null;
+  /** alternative URLs for the current track, tried silently before reporting an error */
+  private fallbacks: string[] = [];
+  private wantPlay = false;
+  private volume = 1;
+  private loadToken = 0;
   analyser: AnalyserNode | null = null;
 
   constructor(private ev: EngineEvents) {
-    const el = (this.el = new Audio());
+    this.el = this.create();
+    this.standby = this.create();
+  }
+
+  private create() {
+    const el = new Audio();
     // All bundled sources serve audio with CORS headers, which keeps the
     // analyser (visualizer) able to read samples.
     el.crossOrigin = 'anonymous';
     el.preload = 'auto';
-    el.addEventListener('timeupdate', () => ev.time(el.currentTime, this.duration()));
-    el.addEventListener('durationchange', () => ev.time(el.currentTime, this.duration()));
-    el.addEventListener('playing', () => ev.playing());
-    el.addEventListener('pause', () => ev.paused());
-    el.addEventListener('ended', () => ev.ended());
-    el.addEventListener('waiting', () => ev.waiting());
-    el.addEventListener('error', () => {
+    // Every listener ignores the standby element.
+    const on = (type: string, fn: () => void) => el.addEventListener(type, () => el === this.el && fn());
+    on('timeupdate', () => this.ev.time(el.currentTime, this.duration()));
+    on('durationchange', () => this.ev.time(el.currentTime, this.duration()));
+    on('playing', () => this.ev.playing());
+    on('pause', () => this.ev.paused());
+    on('ended', () => this.ev.ended());
+    on('waiting', () => this.ev.waiting());
+    on('error', () => {
       if (!el.src || el.src === location.href) return;
+      const next = this.fallbacks.shift();
+      if (next && !this.hls) {
+        el.src = next;
+        if (this.wantPlay) void this.play().catch(() => {});
+        return;
+      }
       const code = el.error?.code;
-      ev.error(
+      this.ev.error(
         code === MediaError.MEDIA_ERR_NETWORK
           ? 'Сетевая ошибка при загрузке аудио'
           : code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
@@ -58,6 +83,8 @@ export class HtmlAudioEngine implements Engine {
             : 'Не удалось воспроизвести трек',
       );
     });
+    if (this.ctx && this.analyser) this.connect(el);
+    return el;
   }
 
   private duration() {
@@ -65,31 +92,55 @@ export class HtmlAudioEngine implements Engine {
     return Number.isFinite(d) ? d : 0;
   }
 
-  async load(url: string, { autoplay, hls, startAt }: { autoplay: boolean; hls?: boolean; startAt?: number }) {
+  /** Start buffering a track that will probably play next. */
+  preload(url: string, key: string) {
+    if (!url || key === this.standbyKey) return;
+    this.standbyKey = key;
+    this.standby.src = url;
+    this.standby.load();
+  }
+
+  async load(url: string, { autoplay, hls, startAt, fallbacks, key }: { autoplay: boolean; hls?: boolean; startAt?: number; fallbacks?: string[]; key?: string }) {
+    const token = ++this.loadToken;
     this.hls?.destroy();
     this.hls = null;
-    const el = this.el;
-    if (hls && !el.canPlayType('application/vnd.apple.mpegurl')) {
+    this.fallbacks = [...(fallbacks ?? [])];
+    this.wantPlay = autoplay;
+
+    if (!hls && key && key === this.standbyKey && this.standby.error == null) {
+      // Next track is already buffering: swap the elements.
+      const old = this.el;
+      this.el = this.standby;
+      this.standby = old;
+      old.pause();
+      old.removeAttribute('src');
+      old.load();
+      this.standbyKey = '';
+      this.el.volume = this.volume;
+      this.el.currentTime = 0;
+    } else if (hls && !this.el.canPlayType('application/vnd.apple.mpegurl')) {
       const { default: HlsCtor } = await import('hls.js');
+      if (token !== this.loadToken) return;
       const h = new HlsCtor({ maxBufferLength: 30 });
       h.on(HlsCtor.Events.ERROR, (_e, data) => data.fatal && this.ev.error('Ошибка потока HLS'));
       h.loadSource(url);
-      h.attachMedia(el);
+      h.attachMedia(this.el);
       this.hls = h;
     } else {
-      el.src = url;
+      this.el.src = url;
     }
+
+    const el = this.el;
     if (startAt) {
-      const apply = () => {
-        el.currentTime = startAt;
-        el.removeEventListener('loadedmetadata', apply);
-      };
-      el.addEventListener('loadedmetadata', apply);
+      const apply = () => token === this.loadToken && (el.currentTime = startAt);
+      if (el.readyState >= 1) apply();
+      else el.addEventListener('loadedmetadata', apply, { once: true });
     }
     if (autoplay) await this.play();
   }
 
   async play() {
+    this.wantPlay = true;
     await this.ctx?.resume().catch(() => {});
     try {
       await this.el.play();
@@ -104,15 +155,20 @@ export class HtmlAudioEngine implements Engine {
     }
   }
   pause() {
+    this.wantPlay = false;
     this.el.pause();
   }
   seek(sec: number) {
     if (Number.isFinite(sec)) this.el.currentTime = Math.max(0, sec);
   }
   setVolume(v: number) {
-    this.el.volume = Math.min(1, Math.max(0, v));
+    this.volume = Math.min(1, Math.max(0, v));
+    this.el.volume = this.volume;
+    this.standby.volume = this.volume;
   }
   stop() {
+    this.loadToken++;
+    this.wantPlay = false;
     this.el.pause();
     this.hls?.destroy();
     this.hls = null;
@@ -120,9 +176,16 @@ export class HtmlAudioEngine implements Engine {
     this.el.load();
   }
 
+  private sources = new WeakSet<HTMLAudioElement>();
+  private connect(el: HTMLAudioElement) {
+    if (!this.ctx || !this.analyser || this.sources.has(el)) return;
+    this.ctx.createMediaElementSource(el).connect(this.analyser);
+    this.sources.add(el);
+  }
+
   /**
-   * Routes the element through Web Audio once. Called lazily the first time
-   * the visualizer is shown, because once connected the element can only be
+   * Routes both elements through Web Audio once. Called lazily the first time
+   * the visualizer is shown, because once connected an element can only be
    * heard through the AudioContext.
    */
   ensureAnalyser(): AnalyserNode | null {
@@ -130,13 +193,13 @@ export class HtmlAudioEngine implements Engine {
     try {
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new Ctx();
-      const src = this.ctx.createMediaElementSource(this.el);
       const an = this.ctx.createAnalyser();
       an.fftSize = 256;
       an.smoothingTimeConstant = 0.8;
-      src.connect(an);
       an.connect(this.ctx.destination);
       this.analyser = an;
+      this.connect(this.el);
+      this.connect(this.standby);
       if (!this.el.paused) this.ctx.resume().catch(() => {});
       return an;
     } catch {

@@ -11,6 +11,7 @@ import { MiniPlayer } from './components/player/MiniPlayer';
 import { NowPlaying } from './components/player/NowPlaying';
 import { QueuePanel } from './components/player/QueuePanel';
 import { useElapsedTitle } from './components/player/controls';
+import { TrackMenuHost } from './components/TrackRow';
 import { AddToPlaylistSheet, OfflineBanner, PaywallSheet, ShortcutsSheet, Toasts } from './components/GlobalOverlays';
 import { usePremium } from './billing/premium';
 import Home from './screens/Home';
@@ -166,6 +167,7 @@ export default function App() {
       <AddToPlaylistSheet />
       <ShortcutsSheet />
       <PaywallSheet />
+      <TrackMenuHost />
       <Toasts />
       <OfflineBanner offline={!online} />
     </MotionConfig>

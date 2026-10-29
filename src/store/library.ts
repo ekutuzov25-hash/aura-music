@@ -9,6 +9,7 @@ import type { Artist, Collection, Track } from '../providers/types';
 import { FREE_PLAYLIST_LIMIT } from '../billing/plans';
 import { isPremiumNow } from '../billing/premium';
 import { useUI } from './ui';
+import { batchedStorage } from '../lib/storage';
 
 export interface PlaylistItem {
   track: Track;
@@ -216,7 +217,7 @@ export const useLibrary = create<LibraryState>()(
         },
       };
     },
-    { name: 'aura-library', version: 1 },
+    { name: 'aura-library', version: 1, storage: batchedStorage() },
   ),
 );
 

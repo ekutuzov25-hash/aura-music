@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { BadgeCheck, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import type { Artist, Collection, Track } from '../providers/types';
 import { player } from '../player/controller';
+import { warmTrack } from '../providers/registry';
 import { usePlayerState, type PlayContext } from '../player/store';
 import { cn, formatCount } from '../lib/util';
 import { Artwork, IconButton, Pressable, Skeleton, SourceBadge, spring } from './ui/primitives';
@@ -87,8 +88,9 @@ export const TrackCard = memo(function TrackCard({
   context?: PlayContext;
   subtitle?: string;
 }) {
+  // Only the card of the playing track re-renders on play/pause.
   const isCurrent = usePlayerState((s) => s.queue[s.index]?.id === t.id);
-  const playing = usePlayerState((s) => s.status === 'playing' || s.status === 'loading');
+  const playing = usePlayerState((s) => s.queue[s.index]?.id === t.id && (s.status === 'playing' || s.status === 'loading'));
   const menu = useTrackMenu();
   const play = () => {
     if (isCurrent) return player.toggle();
@@ -109,6 +111,8 @@ export const TrackCard = memo(function TrackCard({
       custom={index}
       className="group w-[148px] shrink-0 snap-start md:w-[176px]"
       onContextMenu={(e) => menu.open(e, t)}
+      onPointerEnter={() => warmTrack(t)}
+      onPointerDown={() => warmTrack(t)}
       draggable
       onDragStart={(e) => (e as unknown as DragEvent).dataTransfer?.setData(TRACK_DRAG_TYPE, JSON.stringify([t]))}
     >
